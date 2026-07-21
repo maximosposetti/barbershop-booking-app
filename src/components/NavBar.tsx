@@ -20,6 +20,7 @@ export async function NavBar() {
           <Link href="/#galeria">Galeria</Link>
           <Link href="/#ubicacion">Ubicacion</Link>
           {session?.user?.role === "ADMIN" ? <Link href="/admin">Admin</Link> : null}
+          {session?.user ? <Link href="/perfil">Mi perfil</Link> : null}
           {session?.user ? <Link href="/api/auth/signout">Salir</Link> : <Link href="/auth/login">Ingresar</Link>}
           <Link className="button gold" href={bookingHref}>
             Agendar turno

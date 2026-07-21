@@ -2,6 +2,7 @@
 
 import { Pencil, Save, Trash2, Upload } from "lucide-react";
 import { FormEvent, useState } from "react";
+import { AdminInsights } from "@/components/AdminInsights";
 
 type Barber = {
   id: string;
@@ -25,6 +26,14 @@ type User = {
   name: string | null;
   email: string;
 };
+
+const reservationStatusOptions = [
+  { value: "CONFIRMED", label: "Confirmada" },
+  { value: "PENDING_PAYMENT", label: "Pendiente" },
+  { value: "CANCELLED", label: "Cancelada" },
+  { value: "COMPLETED", label: "Finalizada" },
+  { value: "NO_SHOW", label: "No show" }
+];
 
 function getMinimumReservationDateTime() {
   const date = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -291,6 +300,8 @@ export function AdminPanel({
       ) : null}
       {message ? <div className="alert success">{message}</div> : null}
 
+      {databaseReady ? <AdminInsights /> : null}
+
       <div className="admin-grid" style={{ marginTop: 20 }}>
         <section className="card">
           <div className="card-body">
@@ -478,9 +489,11 @@ export function AdminPanel({
             </select>
             <input className="input" min={getMinimumReservationDateTime()} name="startAt" type="datetime-local" required />
             <select className="input" name="status" defaultValue="CONFIRMED">
-              <option value="CONFIRMED">Confirmada</option>
-              <option value="PENDING_PAYMENT">Pendiente de pago</option>
-              <option value="CANCELLED">Cancelada</option>
+              {reservationStatusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
             <button className="button" type="submit">
               Crear reserva
@@ -513,9 +526,11 @@ export function AdminPanel({
                     }))
                   }
                 >
-                  <option value="CONFIRMED">Confirmada</option>
-                  <option value="PENDING_PAYMENT">Pendiente</option>
-                  <option value="CANCELLED">Cancelada</option>
+                  {reservationStatusOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
                 <button className="button" type="button" onClick={() => saveReservationStatus(reservation.id)}>
                   <Save size={18} /> Guardar

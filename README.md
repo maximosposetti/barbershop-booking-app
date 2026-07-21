@@ -9,6 +9,7 @@ Aplicación web full-stack para una barbería con turnero online, login por emai
 - **NextAuth/Auth.js**: sesiones seguras, credenciales y Google OAuth.
 - **Mercado Pago Checkout Pro**: se crea una preferencia y la reserva se confirma solo desde el webhook cuando el pago queda aprobado.
 - **Nodemailer SMTP**: envío automático de email de confirmación.
+- **OpenAI Responses API**: chat interno para administradores con respuestas sobre metricas reales del negocio.
 - **Docker Compose**: base de datos local reproducible.
 
 ## Arquitectura
@@ -54,6 +55,8 @@ MERCADO_PAGO_ACCESS_TOKEN="..."
 SMTP_HOST="..."
 SMTP_USER="..."
 SMTP_PASS="..."
+OPENAI_API_KEY="..."
+OPENAI_MODEL="gpt-5-mini"
 NEXT_PUBLIC_GOOGLE_MAPS_EMBED_URL="url-embed-real-de-google-maps"
 ```
 
@@ -119,8 +122,29 @@ Desde `/admin` se puede:
 - Marcar horarios como no disponibles.
 - Crear reservas manuales para usuarios registrados.
 - Ver, cambiar estado y eliminar reservas.
+- Ver dashboard de metricas con ingresos, reservas, ocupacion, clientes, cancelaciones, no shows y heatmap.
+- Consultar el chat IA del negocio.
 
 Los turnos se generan siempre cada 30 minutos. El admin puede configurar cualquier rango del dia, pero inicio y fin deben terminar en `:00` o `:30`. Si un barbero tiene disponibilidad de `13:00` a `20:00`, la agenda muestra `13:00`, `13:30`, `14:00` y continua hasta `20:00`.
+
+## IA para administradores
+
+El chat IA esta disponible solo dentro de `/admin`. La IA no accede directamente a la base: primero la app calcula las metricas con Prisma y luego envia ese resumen a OpenAI como contexto cerrado.
+
+Variables necesarias:
+
+```env
+OPENAI_API_KEY="tu-api-key"
+OPENAI_MODEL="gpt-5-mini"
+```
+
+Puede responder preguntas sobre crecimiento, ingresos por periodo, reservas por barbero, ocupacion, horarios mas elegidos, estados de reserva, usuarios nuevos, clientes top, cancelaciones, no shows y tiempo promedio hasta reservar.
+
+## Perfil de usuario
+
+Los usuarios logueados pueden entrar a `/perfil` y editar nombre, telefono y foto de perfil por URL. El email no se puede modificar desde el perfil.
+
+Para cambiar la contrasena, el usuario pide un link por email. El token vence en 30 minutos, se guarda hasheado en la base y solo puede usarse una vez.
 
 ## Notas de seguridad
 

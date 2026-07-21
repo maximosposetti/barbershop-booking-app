@@ -14,6 +14,21 @@ export const registerSchema = z.object({
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres")
 });
 
+export const profileSchema = z.object({
+  name: z.string().min(2, "Ingresa tu nombre").max(80),
+  phone: z.string().max(40).optional().nullable(),
+  image: z.string().url("Ingresa una URL valida").optional().or(z.literal(""))
+});
+
+export const passwordResetRequestSchema = z.object({
+  email: z.string().email().optional()
+});
+
+export const passwordResetConfirmSchema = z.object({
+  token: z.string().min(20),
+  password: z.string().min(8, "La contrasena debe tener al menos 8 caracteres")
+});
+
 export const barberSchema = z.object({
   name: z.string().min(2),
   slug: z.string().min(2).regex(/^[a-z0-9-]+$/),
@@ -45,5 +60,5 @@ export const reservationSchema = z.object({
 
 export const adminReservationSchema = reservationSchema.extend({
   userId: z.string().min(1),
-  status: z.enum(["PENDING_PAYMENT", "CONFIRMED", "CANCELLED"]).default("CONFIRMED")
+  status: z.enum(["PENDING_PAYMENT", "CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"]).default("CONFIRMED")
 });
