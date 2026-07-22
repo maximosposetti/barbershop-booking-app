@@ -136,7 +136,7 @@ model Reservation {
   startAt        DateTime
   endAt          DateTime
   status         ReservationStatus @default(PENDING_PAYMENT)
-  priceCents     Int               @default(500000)
+  priceCents     Int               @default(1500000)
   notes          String?
   createdByAdmin Boolean           @default(false)
   user           User              @relation(fields: [userId], references: [id])
@@ -147,6 +147,13 @@ model Reservation {
 
   @@index([barberId, startAt])
   @@index([userId, startAt])
+}
+
+model BusinessSetting {
+  id                String   @id @default("default")
+  haircutPriceCents Int      @default(1500000)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model Payment {

@@ -4,6 +4,12 @@ import { prisma } from "../src/lib/prisma";
 async function main() {
   const passwordHash = await bcrypt.hash("Admin12345", 12);
 
+  await prisma.businessSetting.upsert({
+    where: { id: "default" },
+    update: { haircutPriceCents: 1500000 },
+    create: { id: "default", haircutPriceCents: 1500000 }
+  });
+
   const admin = await prisma.user.upsert({
     where: { email: "admin@barberstudio.com" },
     update: {

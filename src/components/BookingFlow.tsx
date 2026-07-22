@@ -22,6 +22,7 @@ type DayAvailability = {
 };
 
 const weekdayLabels = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
+const priceFormatter = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
 
 function startOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -55,7 +56,7 @@ function getMonthDates(monthDate: Date) {
   });
 }
 
-export function BookingFlow({ barbers }: { barbers: Barber[] }) {
+export function BookingFlow({ barbers, haircutPriceCents }: { barbers: Barber[]; haircutPriceCents: number }) {
   const today = startOfMonth(new Date());
   const [selectedBarber, setSelectedBarber] = useState<Barber | null>(barbers[0] ?? null);
   const [visibleMonth, setVisibleMonth] = useState(today);
@@ -84,6 +85,21 @@ export function BookingFlow({ barbers }: { barbers: Barber[] }) {
     const body = await response.json();
     setAvailability(body.availability ?? []);
     setLoadingSlots(false);
+  }
+
+  async function refreshAvailabilityAfterFailedPayment() {
+    if (!selectedBarber) return;
+
+    const monthStart = startOfMonth(visibleMonth);
+    const params = new URLSearchParams({
+      barberId: selectedBarber.id,
+      start: toDateKey(monthStart),
+      days: String(daysInMonth(monthStart))
+    });
+    const response = await fetch(`/api/availability?${params.toString()}`);
+    const body = await response.json().catch(() => ({}));
+    setAvailability(body.availability ?? []);
+    setSelectedSlot(null);
   }
 
   async function changeMonth(amount: number) {
@@ -125,7 +141,12 @@ export function BookingFlow({ barbers }: { barbers: Barber[] }) {
 
     if (!paymentResponse.ok) {
       const body = await paymentResponse.json().catch(() => ({}));
-      setMessage(body.error ?? "No se pudo iniciar Mercado Pago. Revisa las variables de entorno.");
+      setMessage(
+        body.detail
+          ? `${body.error ?? "No se pudo iniciar Mercado Pago."} Detalle: ${body.detail}`
+          : body.error ?? "No se pudo iniciar Mercado Pago. Revisa las variables de entorno."
+      );
+      await refreshAvailabilityAfterFailedPayment();
       setLoadingPayment(false);
       return;
     }
@@ -289,6 +310,9 @@ export function BookingFlow({ barbers }: { barbers: Barber[] }) {
         </p>
         <p>
           <CalendarDays size={18} /> Turno: <strong>{selectedDate}</strong>
+        </p>
+        <p>
+          <CreditCard size={18} /> Precio: <strong>{priceFormatter.format(haircutPriceCents / 100)}</strong>
         </p>
         <p>
           Se confirma automaticamente cuando Mercado Pago aprueba la transaccion. Los turnos requieren al menos 24 horas de anticipacion.

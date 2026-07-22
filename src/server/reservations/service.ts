@@ -2,8 +2,8 @@ import { addDays, format, startOfDay } from "date-fns";
 import { ReservationStatus } from "@prisma/client";
 import { demoBarbers } from "@/lib/demo-data";
 import { prisma } from "@/lib/prisma";
+import { getHaircutPriceCents } from "@/server/settings/service";
 
-const PRICE_CENTS = 500000;
 const TURN_SLOT_MINUTES = 30;
 const TURN_SLOT_MS = TURN_SLOT_MINUTES * 60_000;
 const MIN_BOOKING_NOTICE_MS = 24 * 60 * 60 * 1000;
@@ -147,6 +147,7 @@ export async function createUserReservation(input: {
 
   const endAt = new Date(selected.endAt);
   await assertReservationSlotAvailable(input.barberId, input.startAt, endAt);
+  const priceCents = await getHaircutPriceCents();
 
   return prisma.reservation.create({
     data: {
@@ -157,10 +158,10 @@ export async function createUserReservation(input: {
       notes: input.notes,
       createdByAdmin: input.createdByAdmin ?? false,
       status: input.status ?? ReservationStatus.PENDING_PAYMENT,
-      priceCents: PRICE_CENTS,
+      priceCents,
       payment: {
         create: {
-          amountCents: PRICE_CENTS
+          amountCents: priceCents
         }
       }
     },

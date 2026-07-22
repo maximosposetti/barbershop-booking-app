@@ -1,12 +1,12 @@
 "use client";
 
-import { BarChart3, CalendarClock, Camera, Home, Images, LogOut, MapPin, Pencil, Save, Scissors, Trash2, Upload, UserRound } from "lucide-react";
+import { BarChart3, CalendarClock, Camera, DollarSign, Home, Images, LogOut, MapPin, Pencil, Save, Scissors, Trash2, Upload, UserRound } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { FormEvent, useState } from "react";
 import { AdminInsights } from "@/components/AdminInsights";
 
-type AdminSection = "charts" | "barbers" | "schedule" | "photos";
+type AdminSection = "charts" | "barbers" | "schedule" | "photos" | "settings";
 
 type Barber = {
   id: string;
@@ -38,6 +38,10 @@ type GalleryImage = {
   category: string;
 };
 
+type BusinessSettings = {
+  haircutPriceCents: number;
+};
+
 const reservationStatusOptions = [
   { value: "CONFIRMED", label: "Confirmada" },
   { value: "PENDING_PAYMENT", label: "Pendiente" },
@@ -56,8 +60,11 @@ const adminSections: { id: AdminSection; label: string; icon: ReactNode }[] = [
   { id: "charts", label: "Graficos", icon: <BarChart3 size={18} /> },
   { id: "barbers", label: "Barberos", icon: <Scissors size={18} /> },
   { id: "schedule", label: "Horarios", icon: <CalendarClock size={18} /> },
-  { id: "photos", label: "Fotos", icon: <Camera size={18} /> }
+  { id: "photos", label: "Fotos", icon: <Camera size={18} /> },
+  { id: "settings", label: "Precio", icon: <DollarSign size={18} /> }
 ];
+
+const priceFormatter = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
 
 function getMinimumReservationDateTime() {
   const date = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -98,18 +105,21 @@ export function AdminPanel({
   initialReservations,
   initialUsers,
   initialGallery,
+  initialSettings,
   databaseReady
 }: {
   initialBarbers: Barber[];
   initialReservations: Reservation[];
   initialUsers: User[];
   initialGallery: GalleryImage[];
+  initialSettings: BusinessSettings;
   databaseReady: boolean;
 }) {
   const [activeSection, setActiveSection] = useState<AdminSection>("charts");
   const [barbers, setBarbers] = useState(initialBarbers);
   const [reservations, setReservations] = useState(initialReservations);
   const [gallery, setGallery] = useState(initialGallery);
+  const [settings, setSettings] = useState(initialSettings);
   const [editingBarber, setEditingBarber] = useState<Barber | null>(null);
   const [editingPhoto, setEditingPhoto] = useState<GalleryImage | null>(null);
   const [reservationDraftStatuses, setReservationDraftStatuses] = useState<Record<string, string>>({});
@@ -355,6 +365,33 @@ export function AdminPanel({
     } else {
       const body = await response.json().catch(() => ({}));
       setMessage(getApiErrorMessage(body, "No se pudo actualizar la reserva."));
+    }
+  }
+
+  async function updateBusinessSettings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const pricePesos = Number(form.get("haircutPrice"));
+
+    if (!Number.isFinite(pricePesos) || pricePesos <= 0) {
+      setMessage("Ingresa un precio valido.");
+      return;
+    }
+
+    const response = await fetch("/api/admin/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ haircutPriceCents: Math.round(pricePesos * 100) })
+    });
+
+    if (response.ok) {
+      const body = await response.json();
+      setSettings(body.settings);
+      setMessage("Precio actualizado.");
+    } else {
+      const body = await response.json().catch(() => ({}));
+      setMessage(getApiErrorMessage(body, "No se pudo actualizar el precio."));
     }
   }
 
@@ -726,6 +763,31 @@ export function AdminPanel({
                   ))}
                   {!gallery.length ? <p>No hay fotos cargadas.</p> : null}
                 </div>
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        {activeSection === "settings" ? (
+          <div className="admin-section-stack">
+            <section className="card">
+              <div className="card-body">
+                <h2>Precio del corte</h2>
+                <p>Precio actual: <strong>{priceFormatter.format(settings.haircutPriceCents / 100)}</strong></p>
+                <form className="form" onSubmit={updateBusinessSettings}>
+                  <input
+                    className="input"
+                    defaultValue={settings.haircutPriceCents / 100}
+                    min="1"
+                    name="haircutPrice"
+                    step="100"
+                    type="number"
+                    required
+                  />
+                  <button className="button" type="submit">
+                    <Save size={18} /> Guardar precio
+                  </button>
+                </form>
               </div>
             </section>
           </div>

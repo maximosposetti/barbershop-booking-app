@@ -3,6 +3,7 @@ import { AdminPanel } from "@/components/AdminPanel";
 import { getCurrentSession } from "@/lib/auth";
 import { demoAdminUser, demoBarbers } from "@/lib/demo-data";
 import { prisma } from "@/lib/prisma";
+import { DEFAULT_HAIRCUT_PRICE_CENTS, getBusinessSettings } from "@/server/settings/service";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export default async function AdminPage() {
     redirect("/");
   }
 
-  const { barbers, reservations, users, gallery, databaseReady } = await Promise.all([
+  const { barbers, reservations, users, gallery, settings, databaseReady } = await Promise.all([
     prisma.barber.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.reservation.findMany({
       orderBy: { startAt: "asc" },
@@ -25,9 +26,10 @@ export default async function AdminPage() {
       }
     }),
     prisma.user.findMany({ orderBy: { createdAt: "desc" }, select: { id: true, name: true, email: true } }),
-    prisma.galleryImage.findMany({ orderBy: { createdAt: "desc" } })
+    prisma.galleryImage.findMany({ orderBy: { createdAt: "desc" } }),
+    getBusinessSettings()
   ])
-    .then(([barbers, reservations, users, gallery]) => ({ barbers, reservations, users, gallery, databaseReady: true }))
+    .then(([barbers, reservations, users, gallery, settings]) => ({ barbers, reservations, users, gallery, settings, databaseReady: true }))
     .catch(() => {
       console.warn("No se pudo leer datos de admin desde la base. Se muestra modo demo.");
       return {
@@ -35,6 +37,7 @@ export default async function AdminPage() {
         reservations: [],
         users: [{ id: demoAdminUser.id, name: demoAdminUser.name, email: demoAdminUser.email }],
         gallery: [],
+        settings: { haircutPriceCents: DEFAULT_HAIRCUT_PRICE_CENTS },
         databaseReady: false
       };
     });
@@ -54,6 +57,7 @@ export default async function AdminPage() {
           url: image.url,
           category: image.category
         }))}
+        initialSettings={{ haircutPriceCents: settings.haircutPriceCents }}
         databaseReady={databaseReady}
       />
     </main>

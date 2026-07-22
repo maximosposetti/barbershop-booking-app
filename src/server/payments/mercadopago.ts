@@ -20,6 +20,9 @@ export async function createMercadoPagoPreference(reservationId: string) {
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  if (process.env.NODE_ENV === "production" && appUrl.includes("localhost")) {
+    throw new Error("NEXT_PUBLIC_APP_URL/NEXTAUTH_URL apunta a localhost en produccion.");
+  }
 
   const response = await fetch(`${MP_API}/checkout/preferences`, {
     method: "POST",

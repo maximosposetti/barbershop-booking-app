@@ -65,3 +65,7 @@ export const adminReservationSchema = reservationSchema.extend({
   userId: z.string().min(1),
   status: z.enum(["PENDING_PAYMENT", "CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"]).default("CONFIRMED")
 });
+
+export const businessSettingsSchema = z.object({
+  haircutPriceCents: z.number().int().min(100, "El precio debe ser mayor a 0").max(100000000, "El precio es demasiado alto")
+});
