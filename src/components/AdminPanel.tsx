@@ -780,7 +780,7 @@ export function AdminPanel({
                     defaultValue={settings.haircutPriceCents / 100}
                     min="1"
                     name="haircutPrice"
-                    step="100"
+                    step="1"
                     type="number"
                     required
                   />
