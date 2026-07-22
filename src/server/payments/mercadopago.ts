@@ -1,4 +1,5 @@
 import { PaymentStatus, ReservationStatus } from "@prisma/client";
+import { getPublicAppUrl } from "@/lib/app-url";
 import { prisma } from "@/lib/prisma";
 import { sendReservationConfirmation } from "@/server/email/send-confirmation";
 
@@ -19,10 +20,7 @@ export async function createMercadoPagoPreference(reservationId: string) {
     throw new Error("Reserva inexistente");
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "http://localhost:3000";
-  if (process.env.NODE_ENV === "production" && appUrl.includes("localhost")) {
-    throw new Error("NEXT_PUBLIC_APP_URL/NEXTAUTH_URL apunta a localhost en produccion.");
-  }
+  const appUrl = getPublicAppUrl();
 
   const response = await fetch(`${MP_API}/checkout/preferences`, {
     method: "POST",

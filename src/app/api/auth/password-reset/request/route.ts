@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
+import { getPublicAppUrl } from "@/lib/app-url";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { passwordResetRequestSchema } from "@/lib/validators";
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
     }
   });
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  const appUrl = getPublicAppUrl();
   const resetUrl = `${appUrl}/auth/reset-password?token=${token}`;
   await sendPasswordResetEmail({ email: user.email, name: user.name, resetUrl });
 
