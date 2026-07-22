@@ -1,6 +1,10 @@
 .env
 .env*.local
+!.env.example
+!.env.production.example
+.vercel
 .next
+.next-build
 .npm-cache
 next-dev.*.log
 node_modules

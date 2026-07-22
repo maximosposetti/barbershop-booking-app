@@ -26,7 +26,7 @@ export async function sendReservationConfirmation(reservation: ReservationEmail)
   const transporter = createMailTransporter();
 
   if (!transporter) {
-    console.warn("SMTP no configurado. Se omite email de confirmacion.");
+    console.warn("SMTP no configurado. Se omite correo de confirmación.");
     return;
   }
 
@@ -56,21 +56,21 @@ export async function sendPasswordResetEmail(input: { email: string; name: strin
   const transporter = createMailTransporter();
 
   if (!transporter) {
-    console.warn("SMTP no configurado. Se omite email de cambio de contrasena.");
+    console.warn("SMTP no configurado. Se omite correo de cambio de contraseña.");
     return;
   }
 
   await transporter.sendMail({
     from: process.env.SMTP_FROM,
     to: input.email,
-    subject: "Cambio de contrasena",
+    subject: "Cambio de contraseña",
     html: `
       <div style="font-family:Arial,sans-serif;line-height:1.5;color:#181818">
-        <h1>Cambio de contrasena</h1>
-        <p>Hola ${input.name ?? ""}, recibimos una solicitud para cambiar tu contrasena.</p>
-        <p>Usa este link para crear una nueva contrasena. El link vence en 30 minutos y solo puede usarse una vez.</p>
-        <p><a href="${input.resetUrl}" style="display:inline-block;background:#111;color:#fff;padding:12px 16px;border-radius:8px;text-decoration:none">Cambiar contrasena</a></p>
-        <p>Si no pediste este cambio, podes ignorar este email.</p>
+        <h1>Cambio de contraseña</h1>
+        <p>Hola ${input.name ?? ""}, recibimos una solicitud para cambiar tu contraseña.</p>
+        <p>Usá este enlace para crear una nueva contraseña. El enlace vence en 30 minutos y solo puede usarse una vez.</p>
+        <p><a href="${input.resetUrl}" style="display:inline-block;background:#111;color:#fff;padding:12px 16px;border-radius:8px;text-decoration:none">Cambiar contraseña</a></p>
+        <p>Si no pediste este cambio, podés ignorar este correo.</p>
       </div>
     `
   });

@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { PasswordField } from "@/components/PasswordField";
 
 export function RegisterForm() {
   const searchParams = useSearchParams();
@@ -18,10 +19,20 @@ export function RegisterForm() {
     setError("");
 
     const form = new FormData(event.currentTarget);
+    const password = String(form.get("password") ?? "");
+    const confirmPassword = String(form.get("confirmPassword") ?? "");
+
+    if (password !== confirmPassword) {
+      setError("Las contraseñas no coinciden.");
+      setLoading(false);
+      return;
+    }
+
     const payload = {
       name: form.get("name"),
       email: form.get("email"),
-      password: form.get("password")
+      phone: form.get("phone"),
+      password
     };
 
     const response = await fetch("/api/auth/register", {
@@ -48,30 +59,29 @@ export function RegisterForm() {
   }
 
   return (
-    <div className="auth-panel">
+    <div className="auth-panel auth-panel-register">
       <h1>Crear cuenta</h1>
-      <p>Registrate para reservar tu turno y recibir la confirmación por email.</p>
-      <form className="form" onSubmit={onSubmit}>
+      <button className="auth-google-button" type="button" onClick={() => signIn("google", { callbackUrl })}>
+        <span className="google-mark">
+          <img src="/google-g.svg" alt="" />
+        </span>
+        Iniciar sesión con Google
+      </button>
+      <form className="form auth-form" onSubmit={onSubmit}>
         {error ? <div className="alert">{error}</div> : null}
-        <label className="field">
-          Nombre
-          <input className="input" name="name" required />
-        </label>
-        <label className="field">
-          Email
-          <input className="input" name="email" type="email" required />
-        </label>
-        <label className="field">
-          Contraseña
-          <input className="input" name="password" type="password" minLength={8} required />
-        </label>
-        <button className="button" disabled={loading} type="submit">
+        <input className="input auth-input" name="name" placeholder="Nombre" required />
+        <input className="input auth-input" name="email" placeholder="Correo electrónico" type="email" required />
+        <input className="input auth-input" name="phone" placeholder="Teléfono" />
+        <PasswordField name="password" placeholder="Contraseña" minLength={8} required />
+        <PasswordField name="confirmPassword" placeholder="Confirmar contraseña" minLength={8} required />
+        <button className="auth-submit" disabled={loading} type="submit">
           <UserPlus size={18} />
-          {loading ? "Creando..." : "Crear cuenta"}
+          {loading ? "Creando..." : "Registrarse"}
         </button>
       </form>
-      <p>
-        ¿Ya tenes cuenta? <Link href={`/auth/login?callbackUrl=${encodeURIComponent(callbackUrl)}`}>Ingresá</Link>
+      <p className="auth-switch auth-switch-inline">
+        ¿Ya tenés una cuenta?
+        <Link href={`/auth/login?callbackUrl=${encodeURIComponent(callbackUrl)}`}>Iniciar sesión</Link>
       </p>
     </div>
   );

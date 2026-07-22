@@ -2,6 +2,7 @@
 
 import { Save } from "lucide-react";
 import { FormEvent, useState } from "react";
+import { PasswordField } from "@/components/PasswordField";
 
 export function ResetPasswordForm({ token }: { token: string }) {
   const [message, setMessage] = useState("");
@@ -16,7 +17,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
     const confirmation = String(form.get("confirmation") ?? "");
 
     if (password !== confirmation) {
-      setMessage("Las contrasenas no coinciden.");
+      setMessage("Las contraseñas no coinciden.");
       setLoading(false);
       return;
     }
@@ -28,19 +29,19 @@ export function ResetPasswordForm({ token }: { token: string }) {
     });
     const body = await response.json().catch(() => ({}));
 
-    setMessage(response.ok ? "Contrasena actualizada. Ya podes iniciar sesion." : body.error ?? "No se pudo cambiar la contrasena.");
+    setMessage(response.ok ? "Contraseña actualizada. Ya podés iniciar sesión." : body.error ?? "No se pudo cambiar la contraseña.");
     setLoading(false);
   }
 
   return (
     <section className="auth-card card">
       <div className="card-body">
-        <h1>Cambiar contrasena</h1>
+        <h1>Cambiar contraseña</h1>
         <form className="form" onSubmit={resetPassword}>
-          <input className="input" minLength={8} name="password" placeholder="Nueva contrasena" required type="password" />
-          <input className="input" minLength={8} name="confirmation" placeholder="Repetir contrasena" required type="password" />
+          <PasswordField minLength={8} name="password" placeholder="Nueva contraseña" required />
+          <PasswordField minLength={8} name="confirmation" placeholder="Repetir contraseña" required />
           <button className="button" disabled={loading || !token} type="submit">
-            <Save size={18} /> {loading ? "Guardando..." : "Guardar contrasena"}
+            <Save size={18} /> {loading ? "Guardando..." : "Guardar contraseña"}
           </button>
         </form>
         {message ? <div className={message.includes("actualizada") ? "alert success" : "alert"}>{message}</div> : null}

@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -34,20 +33,20 @@ enum ImageCategory {
 }
 
 model User {
-  id            String        @id @default(cuid())
-  name          String?
-  email         String        @unique
-  emailVerified DateTime?
-  image         String?
-  phone         String?
-  passwordHash  String?
-  role          Role          @default(USER)
-  accounts      Account[]
-  sessions      Session[]
+  id                  String               @id @default(cuid())
+  name                String?
+  email               String               @unique
+  emailVerified       DateTime?
+  image               String?
+  phone               String?
+  passwordHash        String?
+  role                Role                 @default(USER)
+  accounts            Account[]
+  sessions            Session[]
   passwordResetTokens PasswordResetToken[]
-  reservations  Reservation[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  reservations        Reservation[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 }
 
 model Account {
@@ -85,13 +84,13 @@ model VerificationToken {
 }
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  tokenHash String   @unique
+  tokenHash String    @unique
   expiresAt DateTime
   usedAt    DateTime?
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
 
   @@index([userId])
 }
@@ -151,17 +150,17 @@ model Reservation {
 }
 
 model Payment {
-  id             String        @id @default(cuid())
-  reservationId  String        @unique
-  provider       String        @default("MERCADO_PAGO")
-  preferenceId   String?
-  externalId     String?
-  status         PaymentStatus @default(PENDING)
-  amountCents    Int
-  rawPayload      Json?
-  reservation    Reservation   @relation(fields: [reservationId], references: [id], onDelete: Cascade)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id            String        @id @default(cuid())
+  reservationId String        @unique
+  provider      String        @default("MERCADO_PAGO")
+  preferenceId  String?
+  externalId    String?
+  status        PaymentStatus @default(PENDING)
+  amountCents   Int
+  rawPayload    Json?
+  reservation   Reservation   @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 }
 
 model GalleryImage {

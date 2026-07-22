@@ -146,10 +146,75 @@ Los usuarios logueados pueden entrar a `/perfil` y editar nombre, telefono y fot
 
 Para cambiar la contrasena, el usuario pide un link por email. El token vence en 30 minutos, se guarda hasheado en la base y solo puede usarse una vez.
 
+## Deploy en Vercel
+
+El proyecto esta preparado para desplegar en Vercel con `vercel.json`.
+
+Guia completa: `docs/DEPLOY-VERCEL.md`.
+
+Importante: la variable `DATABASE_URL` local con `localhost` no sirve en Vercel. Para produccion necesitas una base PostgreSQL en la nube, por ejemplo Vercel Postgres, Neon, Supabase o Prisma Postgres.
+
+1. Crear o conectar una base PostgreSQL online.
+
+2. Copiar las variables de `.env.production.example` en Vercel:
+
+```env
+DATABASE_URL="postgresql://usuario:password@host:5432/barbershop?schema=public"
+NEXTAUTH_URL="https://tu-proyecto.vercel.app"
+NEXTAUTH_SECRET="un-secreto-largo-y-unico"
+NEXT_PUBLIC_APP_URL="https://tu-proyecto.vercel.app"
+GOOGLE_CLIENT_ID="..."
+GOOGLE_CLIENT_SECRET="..."
+MERCADO_PAGO_PUBLIC_KEY="..."
+MERCADO_PAGO_ACCESS_TOKEN="..."
+MERCADO_PAGO_WEBHOOK_SECRET="..."
+SMTP_HOST="..."
+SMTP_PORT="587"
+SMTP_USER="..."
+SMTP_PASS="..."
+SMTP_FROM="Barberia <turnos@tudominio.com>"
+OPENAI_API_KEY="..."
+OPENAI_MODEL="gpt-5-mini"
+NEXT_PUBLIC_GOOGLE_MAPS_EMBED_URL="..."
+```
+
+3. En Google Cloud, agregar esta URI de redireccionamiento autorizada:
+
+```txt
+https://tu-proyecto.vercel.app/api/auth/callback/google
+```
+
+4. En Mercado Pago, configurar el webhook:
+
+```txt
+https://tu-proyecto.vercel.app/api/payments/webhook
+```
+
+5. Desplegar desde Vercel importando el repositorio o con la CLI:
+
+```bash
+npm install -g vercel
+vercel login
+vercel
+```
+
+6. Aplicar migraciones en la base de produccion.
+
+Opcion recomendada: ejecutar `npm run db:migrate:deploy` desde un entorno donde `DATABASE_URL` apunte a la base online, no a la local.
+
+7. Si queres cargar los datos iniciales en produccion, ejecutar:
+
+```bash
+npm run db:seed
+```
+
+Hacelo solo una vez y verificando que `DATABASE_URL` apunta a la base de produccion correcta.
+
 ## Notas de seguridad
 
 - Las contraseñas se guardan con `bcrypt`.
 - Las rutas administrativas validan sesión y rol `ADMIN`.
+- La sesion se maneja con cookies `httpOnly`; no se usa `localStorage` ni `sessionStorage` para datos sensibles o de sesion.
 - Las credenciales viven en variables de entorno.
 - La reserva no queda confirmada por volver desde Mercado Pago, sino por el webhook.
 - En producción conviene servir uploads desde almacenamiento externo, por ejemplo S3 o Cloudinary.

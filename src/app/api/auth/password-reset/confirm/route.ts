@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   });
 
   if (!resetToken || resetToken.usedAt || resetToken.expiresAt < new Date()) {
-    return NextResponse.json({ error: "El link ya vencio o no es valido." }, { status: 400 });
+    return NextResponse.json({ error: "El enlace ya venció o no es válido." }, { status: 400 });
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);

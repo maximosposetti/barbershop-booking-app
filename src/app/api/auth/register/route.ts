@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   const email = parsed.data.email.toLowerCase();
   const exists = await prisma.user.findUnique({ where: { email } });
   if (exists) {
-    return NextResponse.json({ error: "Ya existe una cuenta con ese email" }, { status: 409 });
+    return NextResponse.json({ error: "Ya existe una cuenta con ese correo" }, { status: 409 });
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     data: {
       name: parsed.data.name,
       email,
+      phone: parsed.data.phone || null,
       passwordHash
     },
     select: { id: true, name: true, email: true }

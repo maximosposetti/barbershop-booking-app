@@ -15,7 +15,7 @@ export default async function AdminPage() {
     redirect("/");
   }
 
-  const { barbers, reservations, users, databaseReady } = await Promise.all([
+  const { barbers, reservations, users, gallery, databaseReady } = await Promise.all([
     prisma.barber.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.reservation.findMany({
       orderBy: { startAt: "asc" },
@@ -24,15 +24,17 @@ export default async function AdminPage() {
         user: { select: { name: true, email: true } }
       }
     }),
-    prisma.user.findMany({ orderBy: { createdAt: "desc" }, select: { id: true, name: true, email: true } })
+    prisma.user.findMany({ orderBy: { createdAt: "desc" }, select: { id: true, name: true, email: true } }),
+    prisma.galleryImage.findMany({ orderBy: { createdAt: "desc" } })
   ])
-    .then(([barbers, reservations, users]) => ({ barbers, reservations, users, databaseReady: true }))
+    .then(([barbers, reservations, users, gallery]) => ({ barbers, reservations, users, gallery, databaseReady: true }))
     .catch(() => {
       console.warn("No se pudo leer datos de admin desde la base. Se muestra modo demo.");
       return {
         barbers: demoBarbers,
         reservations: [],
         users: [{ id: demoAdminUser.id, name: demoAdminUser.name, email: demoAdminUser.email }],
+        gallery: [],
         databaseReady: false
       };
     });
@@ -46,6 +48,12 @@ export default async function AdminPage() {
           startAt: reservation.startAt instanceof Date ? reservation.startAt.toISOString() : reservation.startAt
         }))}
         initialUsers={users}
+        initialGallery={gallery.map((image) => ({
+          id: image.id,
+          title: image.title,
+          url: image.url,
+          category: image.category
+        }))}
         databaseReady={databaseReady}
       />
     </main>

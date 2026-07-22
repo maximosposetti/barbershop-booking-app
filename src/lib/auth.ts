@@ -8,6 +8,8 @@ import { demoAdminUser } from "@/lib/demo-data";
 import { prisma } from "@/lib/prisma";
 
 const demoAdminPassword = "Admin12345";
+const useSecureCookies = process.env.NEXTAUTH_URL?.startsWith("https://") ?? process.env.NODE_ENV === "production";
+const secureCookiePrefix = useSecureCookies ? "__Secure-" : "";
 
 const providers: AuthOptions["providers"] = [
   CredentialsProvider({
@@ -71,9 +73,21 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers,
+  useSecureCookies,
   session: {
     strategy: "jwt",
     maxAge: 60 * 60 * 24 * 7
+  },
+  cookies: {
+    sessionToken: {
+      name: `${secureCookiePrefix}next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: useSecureCookies
+      }
+    }
   },
   pages: {
     signIn: "/auth/login"

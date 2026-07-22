@@ -9,9 +9,10 @@ const halfHourTimeSchema = z
   }, "Usa una hora valida");
 
 export const registerSchema = z.object({
-  name: z.string().min(2, "Ingresá tu nombre"),
-  email: z.string().email("Ingresá un email válido"),
-  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres")
+  name: z.string().min(2, "Ingresa tu nombre"),
+  email: z.string().email("Ingresá un correo válido"),
+  phone: z.string().max(40).optional(),
+  password: z.string().min(8, "La contrasena debe tener al menos 8 caracteres")
 });
 
 export const profileSchema = z.object({
@@ -41,16 +42,18 @@ export const barberUpdateSchema = barberSchema.partial().extend({
   active: z.boolean().optional()
 });
 
-export const availabilityRuleSchema = z.object({
-  barberId: z.string().min(1),
-  weekday: z.number().int().min(0).max(6),
-  startTime: halfHourTimeSchema,
-  endTime: halfHourTimeSchema,
-  slotMinutes: z.literal(30)
-}).refine((value) => value.startTime < value.endTime, {
-  message: "La hora de fin debe ser posterior a la hora de inicio",
-  path: ["endTime"]
-});
+export const availabilityRuleSchema = z
+  .object({
+    barberId: z.string().min(1),
+    weekday: z.number().int().min(0).max(6),
+    startTime: halfHourTimeSchema,
+    endTime: halfHourTimeSchema,
+    slotMinutes: z.literal(30)
+  })
+  .refine((value) => value.startTime < value.endTime, {
+    message: "La hora de fin debe ser posterior a la hora de inicio",
+    path: ["endTime"]
+  });
 
 export const reservationSchema = z.object({
   barberId: z.string().min(1),

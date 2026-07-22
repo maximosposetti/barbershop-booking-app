@@ -62,8 +62,8 @@ export function ProfileForm({ user }: { user: UserProfile }) {
 
     setMessage(
       response.ok
-        ? "Te enviamos un email con el link para cambiar tu contrasena."
-        : "No se pudo enviar el email de cambio de contrasena."
+        ? "Te enviamos un correo con el enlace para cambiar tu contraseña."
+        : "No se pudo enviar el correo de cambio de contraseña."
     );
     setSendingReset(false);
   }
@@ -79,11 +79,11 @@ export function ProfileForm({ user }: { user: UserProfile }) {
               <input className="input" name="name" defaultValue={user.name ?? ""} required />
             </label>
             <label>
-              Email
+              Correo electrónico
               <input className="input" name="email" defaultValue={user.email} disabled />
             </label>
             <label>
-              Telefono
+              Teléfono
               <input className="input" name="phone" defaultValue={user.phone ?? ""} />
             </label>
             <label>
@@ -99,10 +99,10 @@ export function ProfileForm({ user }: { user: UserProfile }) {
 
       <aside className="card">
         <div className="card-body">
-          <h2>Contrasena</h2>
-          <p>Para cambiarla te enviamos un link seguro a tu email. El link vence en 30 minutos.</p>
+          <h2>Contraseña</h2>
+          <p>Para cambiarla te enviamos un enlace seguro a tu correo. El enlace vence en 30 minutos.</p>
           <button className="button secondary" disabled={sendingReset} onClick={requestPasswordReset} type="button">
-            <Send size={18} /> {sendingReset ? "Enviando..." : "Enviar link"}
+            <Send size={18} /> {sendingReset ? "Enviando..." : "Enviar enlace"}
           </button>
           {message ? <div className="alert success">{message}</div> : null}
         </div>

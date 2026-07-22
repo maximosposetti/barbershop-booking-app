@@ -31,6 +31,32 @@ function extractOpenAiText(payload: unknown) {
     .join("\n");
 }
 
+function getOpenAiErrorMessage(payload: unknown, status: number) {
+  const error = payload && typeof payload === "object" ? (payload as { error?: { code?: string; message?: string; type?: string } }).error : undefined;
+  const code = error?.code ?? "";
+  const type = error?.type ?? "";
+  const message = error?.message ?? "";
+  const normalized = `${code} ${type} ${message}`.toLowerCase();
+
+  if (normalized.includes("insufficient_quota") || normalized.includes("exceeded your current quota") || normalized.includes("billing")) {
+    return "La API de OpenAI no tiene cuota o facturacion disponible. Tu plan de ChatGPT no incluye automaticamente credito de API: revisa Billing en platform.openai.com, agrega un metodo de pago o crea una API key de un proyecto con saldo.";
+  }
+
+  if (status === 401 || normalized.includes("invalid_api_key") || normalized.includes("incorrect api key")) {
+    return "La clave OPENAI_API_KEY no es valida o fue revocada. Genera una nueva API key en platform.openai.com y actualiza tu archivo .env.";
+  }
+
+  if (status === 429 || normalized.includes("rate limit")) {
+    return "OpenAI esta limitando las solicitudes por uso alto. Espera unos minutos y volve a intentar.";
+  }
+
+  if (normalized.includes("model") && (normalized.includes("does not exist") || normalized.includes("access"))) {
+    return "El modelo configurado no esta disponible para tu cuenta. Cambia OPENAI_MODEL en .env por un modelo al que tu proyecto tenga acceso.";
+  }
+
+  return "No se pudo consultar la IA. Revisa la configuracion de OpenAI y vuelve a intentar.";
+}
+
 export async function POST(request: Request) {
   await requireAdmin();
   const body = await request.json();
@@ -73,7 +99,7 @@ export async function POST(request: Request) {
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({}));
     return NextResponse.json(
-      { error: (errorBody as { error?: { message?: string } }).error?.message ?? "No se pudo consultar la IA." },
+      { error: getOpenAiErrorMessage(errorBody, response.status) },
       { status: 502 }
     );
   }

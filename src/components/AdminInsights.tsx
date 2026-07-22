@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, Send } from "lucide-react";
+import { Bot, Maximize2, Minimize2, Send } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type Point = {
@@ -86,7 +86,7 @@ const statusLabels: Record<string, string> = {
   CONFIRMED: "Confirmadas",
   CANCELLED: "Canceladas",
   COMPLETED: "Finalizadas",
-  NO_SHOW: "No shows"
+  NO_SHOW: "Ausentes"
 };
 
 function money(value: number) {
@@ -151,13 +151,22 @@ function BarList({ points, moneyValues = false }: { points: Point[]; moneyValues
 }
 
 function Heatmap({ points }: { points: Point[] }) {
-  const max = maxValue(points);
+  const normalizedPoints = Array.from(
+    points
+      .reduce((items, point) => {
+        const current = items.get(point.label) ?? 0;
+        items.set(point.label, current + point.value);
+        return items;
+      }, new Map<string, number>())
+      .entries()
+  ).map(([label, value]) => ({ label, value }));
+  const max = maxValue(normalizedPoints);
 
   return (
     <div className="heatmap">
-      {points.map((point) => {
+      {normalizedPoints.map((point, index) => {
         const level = point.value === 0 ? 0 : Math.ceil((point.value / max) * 4);
-        return <span className={`heat-level-${level}`} key={point.label} title={`${point.label}: ${point.value}`} />;
+        return <span className={`heat-level-${level}`} key={`${point.label}-${index}`} title={`${point.label}: ${point.value}`} />;
       })}
     </div>
   );
@@ -168,10 +177,11 @@ export function AdminInsights() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [question, setQuestion] = useState("");
+  const [chatMinimized, setChatMinimized] = useState(false);
   const [chat, setChat] = useState<ChatMessage[]>([
     {
       role: "assistant",
-      content: "Puedo responder sobre ingresos, reservas, ocupacion, horarios elegidos, clientes, cancelaciones y crecimiento."
+      content: "Puedo responder sobre ingresos, reservas, ocupación, horarios elegidos, clientes, cancelaciones y crecimiento."
     }
   ]);
   const [chatLoading, setChatLoading] = useState(false);
@@ -199,7 +209,7 @@ export function AdminInsights() {
 
   const statusSegments = useMemo(() => {
     if (!analytics) return "";
-    const colors = ["#c49132", "#1f8f52", "#c93b35", "#4c6fff", "#111111"];
+    const colors = ["#bd8b37", "#2f7d5a", "#b6403c", "#706b64", "#242423"];
     let current = 0;
 
     return analytics.reservationStatuses
@@ -365,7 +375,7 @@ export function AdminInsights() {
             </article>
             <article className="card">
               <div className="card-body">
-                <h3>No shows</h3>
+                <h3>Ausentes</h3>
                 <div className="large-number">{analytics.kpis.noShows}</div>
               </div>
             </article>
@@ -404,32 +414,45 @@ export function AdminInsights() {
             </div>
           </article>
 
-          <article className="card ai-card" style={{ marginTop: 20 }}>
-            <div className="card-body">
-              <h3>
-                <Bot size={20} /> Chat IA del negocio
-              </h3>
-              <div className="ai-chat-log">
-                {chat.map((message, index) => (
-                  <div className={`ai-message ${message.role}`} key={`${message.role}-${index}`}>
-                    {message.content}
-                  </div>
-                ))}
-                {chatLoading ? <div className="ai-message assistant">Analizando datos...</div> : null}
-              </div>
-              <form className="ai-chat-form" onSubmit={askAi}>
-                <input
-                  className="input"
-                  value={question}
-                  onChange={(event) => setQuestion(event.target.value)}
-                  placeholder="Pregunta por ingresos, ocupacion, clientes o cancelaciones"
-                />
-                <button className="button" disabled={chatLoading} type="submit">
-                  <Send size={18} /> Preguntar
-                </button>
-              </form>
-            </div>
-          </article>
+          <aside className={`ai-floating-card ${chatMinimized ? "is-minimized" : ""}`}>
+            <header className="ai-floating-header">
+              <strong>
+                <Bot size={18} /> Chat IA
+              </strong>
+              <button
+                aria-label={chatMinimized ? "Agrandar chat IA" : "Minimizar chat IA"}
+                className="icon-button"
+                onClick={() => setChatMinimized((current) => !current)}
+                title={chatMinimized ? "Agrandar" : "Minimizar"}
+                type="button"
+              >
+                {chatMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+              </button>
+            </header>
+            {!chatMinimized ? (
+              <>
+                <div className="ai-chat-log">
+                  {chat.map((message, index) => (
+                    <div className={`ai-message ${message.role}`} key={`${message.role}-${index}`}>
+                      {message.content}
+                    </div>
+                  ))}
+                  {chatLoading ? <div className="ai-message assistant">Analizando datos...</div> : null}
+                </div>
+                <form className="ai-chat-form" onSubmit={askAi}>
+                  <input
+                    className="input"
+                    value={question}
+                    onChange={(event) => setQuestion(event.target.value)}
+                    placeholder="Preguntar"
+                  />
+                  <button className="button" disabled={chatLoading} type="submit" title="Preguntar">
+                    <Send size={18} />
+                  </button>
+                </form>
+              </>
+            ) : null}
+          </aside>
         </>
       ) : null}
     </section>

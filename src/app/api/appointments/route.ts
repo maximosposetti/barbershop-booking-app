@@ -6,7 +6,7 @@ import { createUserReservation } from "@/server/reservations/service";
 export async function POST(request: Request) {
   const session = await getCurrentSession();
   if (!session?.user) {
-    return NextResponse.json({ error: "Inicia sesion para reservar" }, { status: 401 });
+    return NextResponse.json({ error: "Iniciá sesión para reservar" }, { status: 401 });
   }
 
   const body = await request.json();
