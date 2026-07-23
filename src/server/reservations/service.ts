@@ -1,5 +1,5 @@
 import { addDays, format, startOfDay } from "date-fns";
-import { ReservationStatus } from "@prisma/client";
+import { PaymentStatus, ReservationStatus } from "@prisma/client";
 import { demoBarbers } from "@/lib/demo-data";
 import { prisma } from "@/lib/prisma";
 import { getHaircutPriceCents } from "@/server/settings/service";
@@ -7,6 +7,7 @@ import { getHaircutPriceCents } from "@/server/settings/service";
 const TURN_SLOT_MINUTES = 30;
 const TURN_SLOT_MS = TURN_SLOT_MINUTES * 60_000;
 const MIN_BOOKING_NOTICE_MS = 24 * 60 * 60 * 1000;
+const PENDING_PAYMENT_HOLD_MS = 20 * 60 * 1000;
 
 type AvailabilitySlot = {
   startAt: string;
@@ -48,7 +49,55 @@ function dedupeSlots(slots: AvailabilitySlot[]) {
   );
 }
 
+function getPendingPaymentHoldThreshold() {
+  return new Date(Date.now() - PENDING_PAYMENT_HOLD_MS);
+}
+
+function getBlockingReservationStatusWhere() {
+  return {
+    OR: [
+      { status: ReservationStatus.CONFIRMED },
+      {
+        status: ReservationStatus.PENDING_PAYMENT,
+        createdAt: { gte: getPendingPaymentHoldThreshold() }
+      }
+    ]
+  };
+}
+
+export async function releasePendingPaymentReservationsForUser(userId: string) {
+  return prisma.reservation.deleteMany({
+    where: {
+      userId,
+      status: ReservationStatus.PENDING_PAYMENT,
+      payment: {
+        is: {
+          status: PaymentStatus.PENDING,
+          externalId: null
+        }
+      }
+    }
+  });
+}
+
+export async function releaseExpiredPendingPaymentReservations() {
+  return prisma.reservation.deleteMany({
+    where: {
+      status: ReservationStatus.PENDING_PAYMENT,
+      createdAt: { lt: getPendingPaymentHoldThreshold() },
+      payment: {
+        is: {
+          status: PaymentStatus.PENDING,
+          externalId: null
+        }
+      }
+    }
+  });
+}
+
 export async function getAvailability(barberId: string, days = 14, startDate?: Date) {
+  await releaseExpiredPendingPaymentReservations().catch(() => undefined);
+
   const barber = await prisma.barber
     .findUnique({
       where: { id: barberId },
@@ -56,7 +105,7 @@ export async function getAvailability(barberId: string, days = 14, startDate?: D
         availabilityRules: true,
         unavailableBlocks: true,
         reservations: {
-          where: { status: { in: [ReservationStatus.PENDING_PAYMENT, ReservationStatus.CONFIRMED] } }
+          where: getBlockingReservationStatusWhere()
         }
       }
     })
@@ -177,7 +226,7 @@ export async function assertReservationSlotAvailable(barberId: string, startAt: 
   const conflict = await prisma.reservation.findFirst({
     where: {
       barberId,
-      status: { in: [ReservationStatus.PENDING_PAYMENT, ReservationStatus.CONFIRMED] },
+      ...getBlockingReservationStatusWhere(),
       id: excludeReservationId ? { not: excludeReservationId } : undefined,
       startAt: { lt: endAt },
       endAt: { gt: startAt }

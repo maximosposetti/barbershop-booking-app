@@ -3,6 +3,7 @@ import { BookingFlow } from "@/components/BookingFlow";
 import { getCurrentSession } from "@/lib/auth";
 import { demoBarbers } from "@/lib/demo-data";
 import { prisma } from "@/lib/prisma";
+import { releasePendingPaymentReservationsForUser } from "@/server/reservations/service";
 import { DEFAULT_HAIRCUT_PRICE_CENTS, getBusinessSettings } from "@/server/settings/service";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +13,8 @@ export default async function BookingPage() {
   if (!session?.user) {
     redirect("/auth/login?callbackUrl=/agendar");
   }
+
+  await releasePendingPaymentReservationsForUser(session.user.id).catch(() => undefined);
 
   const { barbers, haircutPriceCents } = await Promise.all([
     prisma.barber.findMany({

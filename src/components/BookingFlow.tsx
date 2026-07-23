@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarDays, ChevronLeft, ChevronRight, CreditCard, Scissors } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Barber = {
   id: string;
@@ -67,40 +67,62 @@ export function BookingFlow({ barbers, haircutPriceCents }: { barbers: Barber[];
   const [loadingPayment, setLoadingPayment] = useState(false);
   const [message, setMessage] = useState("");
 
-  async function loadAvailability(barber: Barber, monthDate = visibleMonth) {
+  async function fetchAvailabilityFor(barber: Barber, monthDate: Date) {
     const monthStart = startOfMonth(monthDate);
-
-    setSelectedBarber(barber);
-    setSelectedDay(null);
-    setSelectedSlot(null);
-    setLoadingSlots(true);
-    setMessage("");
-
     const params = new URLSearchParams({
       barberId: barber.id,
       start: toDateKey(monthStart),
       days: String(daysInMonth(monthStart))
     });
     const response = await fetch(`/api/availability?${params.toString()}`);
-    const body = await response.json();
-    setAvailability(body.availability ?? []);
+    const body = await response.json().catch(() => ({}));
+    return body.availability ?? [];
+  }
+
+  async function loadAvailability(barber: Barber, monthDate = visibleMonth) {
+    setSelectedBarber(barber);
+    setSelectedDay(null);
+    setSelectedSlot(null);
+    setLoadingSlots(true);
+    setMessage("");
+    setAvailability(await fetchAvailabilityFor(barber, monthDate));
     setLoadingSlots(false);
   }
 
   async function refreshAvailabilityAfterFailedPayment() {
     if (!selectedBarber) return;
 
-    const monthStart = startOfMonth(visibleMonth);
-    const params = new URLSearchParams({
-      barberId: selectedBarber.id,
-      start: toDateKey(monthStart),
-      days: String(daysInMonth(monthStart))
-    });
-    const response = await fetch(`/api/availability?${params.toString()}`);
-    const body = await response.json().catch(() => ({}));
-    setAvailability(body.availability ?? []);
+    setAvailability(await fetchAvailabilityFor(selectedBarber, visibleMonth));
     setSelectedSlot(null);
   }
+
+  useEffect(() => {
+    if (!selectedBarber) return;
+
+    let cancelled = false;
+
+    async function releasePendingAndRefresh() {
+      await fetch("/api/appointments/pending", { method: "DELETE" }).catch(() => undefined);
+      if (cancelled || !selectedBarber) return;
+      const nextAvailability = await fetchAvailabilityFor(selectedBarber, visibleMonth);
+      if (cancelled) return;
+      setAvailability(nextAvailability);
+      setSelectedSlot(null);
+    }
+
+    void releasePendingAndRefresh();
+
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) void releasePendingAndRefresh();
+    };
+
+    window.addEventListener("pageshow", handlePageShow);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("pageshow", handlePageShow);
+    };
+  }, [selectedBarber, visibleMonth]);
 
   async function changeMonth(amount: number) {
     const nextMonth = addMonths(visibleMonth, amount);
