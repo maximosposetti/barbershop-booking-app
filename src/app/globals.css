@@ -15,11 +15,16 @@
   box-sizing: border-box;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow-x: hidden;
 }
 
 a {
@@ -32,6 +37,14 @@ input,
 select,
 textarea {
   font: inherit;
+  min-width: 0;
+}
+
+img,
+iframe,
+video,
+canvas {
+  max-width: 100%;
 }
 
 .shell {
@@ -54,6 +67,7 @@ textarea {
   justify-content: space-between;
   min-height: 72px;
   gap: 20px;
+  padding: 10px 0;
 }
 
 .brand {
@@ -77,6 +91,8 @@ textarea {
 .nav-links {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 14px;
   color: var(--muted);
   font-size: 0.95rem;
@@ -95,6 +111,7 @@ textarea {
   color: white;
   cursor: pointer;
   font-weight: 800;
+  text-align: center;
   transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
 }
 
@@ -142,9 +159,10 @@ textarea {
 .hero h1 {
   max-width: 760px;
   margin: 0 0 18px;
-  font-size: clamp(3rem, 9vw, 7.6rem);
+  font-size: clamp(2.4rem, 9vw, 7.6rem);
   line-height: 0.92;
   letter-spacing: 0;
+  overflow-wrap: anywhere;
 }
 
 .hero p {
@@ -172,7 +190,7 @@ textarea {
 
 .section-title h2 {
   margin: 0;
-  font-size: clamp(2rem, 4vw, 4rem);
+  font-size: clamp(1.7rem, 4vw, 4rem);
   line-height: 0.98;
 }
 
@@ -219,6 +237,7 @@ textarea {
   border-radius: 8px;
   background: var(--surface);
   overflow: hidden;
+  min-width: 0;
 }
 
 .card-body {
@@ -683,6 +702,7 @@ textarea.input {
   border-radius: 8px;
   background: white;
   padding: 18px;
+  min-width: 0;
 }
 
 .admin-sidebar-brand {
@@ -1086,6 +1106,8 @@ textarea.input {
 .row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 16px;
   padding: 12px;
   border: 1px solid var(--line);
@@ -1093,10 +1115,69 @@ textarea.input {
   background: white;
 }
 
-@media (max-width: 860px) {
+.row > * {
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .booking-layout {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+
+  .admin-dashboard {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .analytics-grid.three {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .nav-inner {
+    align-items: flex-start;
+  }
+
+  .brand {
+    min-height: 44px;
+  }
+
   .nav-links {
-    gap: 8px;
-    font-size: 0.85rem;
+    max-width: 680px;
+  }
+
+  .photo-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .photo.tall {
+    grid-row: auto;
+  }
+
+  .grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .shell,
+  .hero-content {
+    width: min(calc(100% - 24px), 1180px);
+  }
+
+  .nav-inner {
+    display: grid;
+    gap: 12px;
+  }
+
+  .nav-links {
+    justify-content: flex-start;
+    gap: 10px;
+    font-size: 0.9rem;
   }
 
   .photo-grid,
@@ -1152,6 +1233,14 @@ textarea.input {
     position: static;
   }
 
+  .admin-sidebar-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-sidebar-divider {
+    margin: 2px 0;
+  }
+
   .analytics-table {
     grid-template-columns: 1fr;
   }
@@ -1190,5 +1279,267 @@ textarea.input {
 
   .ai-chat-form {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .shell,
+  .hero-content {
+    width: min(calc(100% - 20px), 1180px);
+  }
+
+  .nav {
+    position: static;
+  }
+
+  .nav-links {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .nav-links .button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .hero {
+    min-height: calc(100svh - 120px);
+  }
+
+  .hero-content {
+    padding: 12vh 0 10vh;
+  }
+
+  .section {
+    padding: 56px 0;
+  }
+
+  .auth-page,
+  .booking-page,
+  .admin-page {
+    padding: 28px 0 56px;
+  }
+
+  .auth-panel,
+  .logout-panel {
+    padding: 34px 20px 28px;
+  }
+
+  .auth-panel-register {
+    width: min(100%, 440px);
+    padding: 34px 20px 28px;
+  }
+
+  .auth-google-button,
+  .auth-submit {
+    min-height: 56px;
+    gap: 12px;
+    font-size: 0.98rem;
+  }
+
+  .google-mark {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+  }
+
+  .auth-input,
+  .auth-panel .password-field .input {
+    min-height: 56px;
+    font-size: 1rem;
+  }
+
+  .auth-switch-inline {
+    flex-wrap: wrap;
+    gap: 8px 18px;
+  }
+
+  .booking-panel,
+  .admin-panel,
+  .card-body {
+    padding: 16px;
+  }
+
+  .photo-grid,
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .photo,
+  .photo.tall,
+  .barber-card figure {
+    min-height: 260px;
+    height: 260px;
+  }
+
+  .month-toolbar {
+    display: grid;
+  }
+
+  .month-toolbar h2 {
+    margin: 0;
+    font-size: 1.35rem;
+  }
+
+  .month-actions {
+    justify-content: flex-start;
+  }
+
+  .month-grid {
+    gap: 4px;
+  }
+
+  .month-weekday {
+    font-size: 0.68rem;
+  }
+
+  .month-day,
+  .month-empty {
+    min-height: 52px;
+  }
+
+  .month-day {
+    padding: 6px 4px;
+  }
+
+  .day-number {
+    font-size: 0.88rem;
+  }
+
+  .day-status {
+    font-size: 0.58rem;
+    line-height: 1.15;
+  }
+
+  .slot-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-sidebar {
+    padding: 12px;
+  }
+
+  .admin-sidebar-brand {
+    width: 100%;
+  }
+
+  .admin-sidebar-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-sidebar-nav a,
+  .admin-sidebar-nav button {
+    min-height: 40px;
+    padding: 0 8px;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .row .button,
+  .row .input {
+    width: 100%;
+  }
+
+  .photo-admin-item {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .photo-admin-item img {
+    width: 64px;
+    height: 64px;
+  }
+
+  .metric-bar {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .metric-bar strong {
+    grid-column: 1 / -1;
+  }
+
+  .occupation-list > div,
+  .occupation-list > div > div {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .heatmap {
+    grid-template-columns: repeat(7, 1fr);
+  }
+
+  .ai-floating-card {
+    width: calc(100vw - 20px);
+    max-height: min(420px, 70vh);
+    right: 10px;
+    bottom: 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .shell,
+  .hero-content {
+    width: min(calc(100% - 16px), 1180px);
+  }
+
+  .brand {
+    font-size: 0.95rem;
+  }
+
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+  }
+
+  .nav-links {
+    grid-template-columns: 1fr;
+  }
+
+  .button {
+    width: 100%;
+    padding: 0 14px;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.1rem, 18vw, 3.2rem);
+  }
+
+  .auth-panel h1,
+  .logout-panel h1 {
+    font-size: 1.55rem;
+  }
+
+  .auth-google-button {
+    justify-content: flex-start;
+    padding: 0 14px;
+  }
+
+  .month-day,
+  .month-empty {
+    min-height: 46px;
+  }
+
+  .day-status {
+    display: none;
+  }
+
+  .slot-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .photo-admin-item {
+    grid-template-columns: 1fr;
+  }
+
+  .photo-admin-item img {
+    width: 100%;
+    height: 160px;
   }
 }
