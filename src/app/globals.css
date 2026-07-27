@@ -804,6 +804,16 @@ textarea.input {
   margin-top: 20px;
 }
 
+.analytics-shell .section-title > div {
+  display: grid;
+  gap: 24px;
+}
+
+.analytics-shell .section-title h2 {
+  line-height: 1.14;
+  margin-bottom: 0;
+}
+
 .period-select {
   max-width: 220px;
 }
