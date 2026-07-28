@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { PasswordField } from "@/components/PasswordField";
+import { argentinaCityOptions } from "@/lib/argentina-cities";
 
 export function RegisterForm() {
   const searchParams = useSearchParams();
@@ -23,7 +24,7 @@ export function RegisterForm() {
     const confirmPassword = String(form.get("confirmPassword") ?? "");
 
     if (password !== confirmPassword) {
-      setError("Las contraseñas no coinciden.");
+      setError("Las contrasenas no coinciden.");
       setLoading(false);
       return;
     }
@@ -32,6 +33,11 @@ export function RegisterForm() {
       name: form.get("name"),
       email: form.get("email"),
       phone: form.get("phone"),
+      city: form.get("city"),
+      addressStreet: form.get("addressStreet"),
+      addressNumber: form.get("addressNumber"),
+      addressFloor: form.get("addressFloor"),
+      addressApartment: form.get("addressApartment"),
       password
     };
 
@@ -41,9 +47,10 @@ export function RegisterForm() {
       body: JSON.stringify(payload)
     });
 
+    const body = await response.json().catch(() => ({}));
+
     if (!response.ok) {
-      const body = await response.json();
-      setError(typeof body.error === "string" ? body.error : "Revisá los datos ingresados.");
+      setError(typeof body.error === "string" ? body.error : "Revisa los datos ingresados.");
       setLoading(false);
       return;
     }
@@ -55,6 +62,11 @@ export function RegisterForm() {
       callbackUrl
     });
 
+    if (!login?.error && body.phoneVerification) {
+      window.location.href = `/verificar-telefono?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+      return;
+    }
+
     window.location.href = login?.url ?? callbackUrl;
   }
 
@@ -65,23 +77,39 @@ export function RegisterForm() {
         <span className="google-mark">
           <img src="/google-g.svg" alt="" />
         </span>
-        Iniciar sesión con Google
+        Iniciar sesion con Google
       </button>
       <form className="form auth-form" onSubmit={onSubmit}>
         {error ? <div className="alert">{error}</div> : null}
         <input className="input auth-input" name="name" placeholder="Nombre" required />
-        <input className="input auth-input" name="email" placeholder="Correo electrónico" type="email" required />
-        <input className="input auth-input" name="phone" placeholder="Teléfono" />
-        <PasswordField name="password" placeholder="Contraseña" minLength={8} required />
-        <PasswordField name="confirmPassword" placeholder="Confirmar contraseña" minLength={8} required />
+        <input className="input auth-input" name="email" placeholder="Correo electronico" type="email" required />
+        <input className="input auth-input" name="phone" placeholder="Telefono celular" inputMode="tel" required />
+        <select className="input auth-input" name="city" defaultValue="" required>
+          <option value="" disabled>
+            Ciudad y provincia
+          </option>
+          {argentinaCityOptions.map((city) => (
+            <option key={city.value} value={city.value}>
+              {city.label}
+            </option>
+          ))}
+        </select>
+        <div className="auth-address-grid">
+          <input className="input auth-input" name="addressStreet" placeholder="Calle" required />
+          <input className="input auth-input" name="addressNumber" placeholder="Numero" inputMode="numeric" required />
+          <input className="input auth-input" name="addressFloor" placeholder="Piso (opcional)" />
+          <input className="input auth-input" name="addressApartment" placeholder="Depto (opcional)" />
+        </div>
+        <PasswordField name="password" placeholder="Contrasena" minLength={8} required />
+        <PasswordField name="confirmPassword" placeholder="Confirmar contrasena" minLength={8} required />
         <button className="auth-submit" disabled={loading} type="submit">
           <UserPlus size={18} />
           {loading ? "Creando..." : "Registrarse"}
         </button>
       </form>
       <p className="auth-switch auth-switch-inline">
-        ¿Ya tenés una cuenta?
-        <Link href={`/auth/login?callbackUrl=${encodeURIComponent(callbackUrl)}`}>Iniciar sesión</Link>
+        Ya tenes una cuenta?
+        <Link href={`/auth/login?callbackUrl=${encodeURIComponent(callbackUrl)}`}>Iniciar sesion</Link>
       </p>
     </div>
   );

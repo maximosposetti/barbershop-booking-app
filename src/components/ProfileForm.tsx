@@ -1,12 +1,18 @@
 "use client";
 
-import { Save, Send } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { Save, Send, Upload } from "lucide-react";
+import { ChangeEvent, FormEvent, useState } from "react";
+import { argentinaCityOptions } from "@/lib/argentina-cities";
 
 type UserProfile = {
   name: string | null;
   email: string;
   phone: string | null;
+  city: string | null;
+  addressStreet: string | null;
+  addressNumber: string | null;
+  addressFloor: string | null;
+  addressApartment: string | null;
   image: string | null;
 };
 
@@ -29,6 +35,8 @@ function getApiErrorMessage(body: unknown, fallback: string) {
 export function ProfileForm({ user }: { user: UserProfile }) {
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [profileImage, setProfileImage] = useState(user.image || "/default-pfp.jpg");
   const [sendingReset, setSendingReset] = useState(false);
 
   async function updateProfile(event: FormEvent<HTMLFormElement>) {
@@ -42,13 +50,54 @@ export function ProfileForm({ user }: { user: UserProfile }) {
       body: JSON.stringify({
         name: form.get("name"),
         phone: form.get("phone"),
-        image: form.get("image")
+        city: form.get("city"),
+        addressStreet: form.get("addressStreet"),
+        addressNumber: form.get("addressNumber"),
+        addressFloor: form.get("addressFloor"),
+        addressApartment: form.get("addressApartment")
       })
     });
     const body = await response.json().catch(() => ({}));
 
+    if (response.ok && body.requiresPhoneVerification && typeof body.redirectTo === "string") {
+      window.location.href = body.redirectTo;
+      return;
+    }
+
     setMessage(response.ok ? "Perfil actualizado." : getApiErrorMessage(body, "No se pudo actualizar el perfil."));
     setSaving(false);
+  }
+
+  async function uploadProfileImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    setMessage("");
+
+    const previousImage = profileImage;
+    const previewUrl = URL.createObjectURL(file);
+    setProfileImage(previewUrl);
+
+    const form = new FormData();
+    form.append("file", file);
+
+    const response = await fetch("/api/profile/image", {
+      method: "POST",
+      body: form
+    });
+    const body = await response.json().catch(() => ({}));
+
+    if (response.ok && typeof body.image === "string") {
+      setProfileImage(body.image);
+      setMessage("Foto de perfil actualizada.");
+    } else {
+      setProfileImage(previousImage);
+      setMessage(getApiErrorMessage(body, "No se pudo actualizar la foto de perfil."));
+    }
+
+    URL.revokeObjectURL(previewUrl);
+    setUploadingImage(false);
   }
 
   async function requestPasswordReset() {
@@ -62,8 +111,8 @@ export function ProfileForm({ user }: { user: UserProfile }) {
 
     setMessage(
       response.ok
-        ? "Te enviamos un correo con el enlace para cambiar tu contraseña."
-        : "No se pudo enviar el correo de cambio de contraseña."
+        ? "Te enviamos un correo con el enlace para cambiar tu contrasena."
+        : "No se pudo enviar el correo de cambio de contrasena."
     );
     setSendingReset(false);
   }
@@ -79,17 +128,54 @@ export function ProfileForm({ user }: { user: UserProfile }) {
               <input className="input" name="name" defaultValue={user.name ?? ""} required />
             </label>
             <label>
-              Correo electrónico
+              Correo electronico
               <input className="input" name="email" defaultValue={user.email} disabled />
             </label>
             <label>
-              Teléfono
-              <input className="input" name="phone" defaultValue={user.phone ?? ""} />
+              Telefono celular
+              <input className="input" name="phone" defaultValue={user.phone ?? ""} inputMode="tel" required />
             </label>
             <label>
-              URL de foto de perfil
-              <input className="input" name="image" defaultValue={user.image ?? ""} placeholder="https://..." />
+              Ciudad y provincia
+              <select className="input" name="city" defaultValue={user.city ?? ""} required>
+                <option value="" disabled>
+                  Ciudad y provincia
+                </option>
+                {argentinaCityOptions.map((city) => (
+                  <option key={city.value} value={city.value}>
+                    {city.label}
+                  </option>
+                ))}
+              </select>
             </label>
+            <div className="profile-address-grid">
+              <label>
+                Calle
+                <input className="input" name="addressStreet" defaultValue={user.addressStreet ?? ""} required />
+              </label>
+              <label>
+                Numero
+                <input className="input" name="addressNumber" defaultValue={user.addressNumber ?? ""} inputMode="numeric" required />
+              </label>
+              <label>
+                Piso
+                <input className="input" name="addressFloor" defaultValue={user.addressFloor ?? ""} placeholder="Opcional" />
+              </label>
+              <label>
+                Departamento
+                <input className="input" name="addressApartment" defaultValue={user.addressApartment ?? ""} placeholder="Opcional" />
+              </label>
+            </div>
+            <div className="profile-photo-field">
+              <span>Foto de perfil</span>
+              <div className="profile-photo-control">
+                <img src={profileImage} alt="Foto de perfil actual" />
+                <label className="button secondary profile-photo-button">
+                  <Upload size={18} /> {uploadingImage ? "Subiendo..." : "Cambiar foto"}
+                  <input accept="image/jpeg,image/png,image/webp" disabled={uploadingImage} onChange={uploadProfileImage} type="file" />
+                </label>
+              </div>
+            </div>
             <button className="button" disabled={saving} type="submit">
               <Save size={18} /> {saving ? "Guardando..." : "Guardar perfil"}
             </button>
@@ -99,7 +185,7 @@ export function ProfileForm({ user }: { user: UserProfile }) {
 
       <aside className="card">
         <div className="card-body">
-          <h2>Contraseña</h2>
+          <h2>Contrasena</h2>
           <p>Para cambiarla te enviamos un enlace seguro a tu correo. El enlace vence en 30 minutos.</p>
           <button className="button secondary" disabled={sendingReset} onClick={requestPasswordReset} type="button">
             <Send size={18} /> {sendingReset ? "Enviando..." : "Enviar enlace"}

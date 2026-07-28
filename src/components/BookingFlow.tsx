@@ -2,6 +2,7 @@
 
 import { CalendarDays, ChevronLeft, ChevronRight, CreditCard, Scissors } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { StyleAssistant } from "@/components/StyleAssistant";
 
 type Barber = {
   id: string;
@@ -219,6 +220,8 @@ export function BookingFlow({ barbers, haircutPriceCents }: { barbers: Barber[];
             <p>Selecciona un barbero, elegi el dia del mes y despues el horario disponible.</p>
           </div>
         </div>
+
+        <StyleAssistant />
 
         <div className="grid-3">
           {barbers.map((barber) => (

@@ -33,20 +33,28 @@ enum ImageCategory {
 }
 
 model User {
-  id                  String               @id @default(cuid())
+  id                  String                  @id @default(cuid())
   name                String?
-  email               String               @unique
+  email               String                  @unique
   emailVerified       DateTime?
   image               String?
   phone               String?
+  phoneVerifiedAt     DateTime?
+  city                String?
+  addressStreet       String?
+  addressNumber       String?
+  addressFloor        String?
+  addressApartment    String?
   passwordHash        String?
-  role                Role                 @default(USER)
+  role                Role                    @default(USER)
   accounts            Account[]
   sessions            Session[]
   passwordResetTokens PasswordResetToken[]
+  phoneVerifications  PhoneVerificationCode[]
   reservations        Reservation[]
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  reviews             Review[]
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
 }
 
 model Account {
@@ -95,6 +103,21 @@ model PasswordResetToken {
   @@index([userId])
 }
 
+model PhoneVerificationCode {
+  id        String    @id @default(cuid())
+  userId    String
+  phone     String
+  codeHash  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  sentAt    DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([phone])
+}
+
 model Barber {
   id                String             @id @default(cuid())
   name              String
@@ -105,6 +128,7 @@ model Barber {
   availabilityRules AvailabilityRule[]
   unavailableBlocks UnavailableBlock[]
   reservations      Reservation[]
+  reviews           Review[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 }
@@ -130,20 +154,22 @@ model UnavailableBlock {
 }
 
 model Reservation {
-  id             String            @id @default(cuid())
-  userId         String
-  barberId       String
-  startAt        DateTime
-  endAt          DateTime
-  status         ReservationStatus @default(PENDING_PAYMENT)
-  priceCents     Int               @default(1500000)
-  notes          String?
-  createdByAdmin Boolean           @default(false)
-  user           User              @relation(fields: [userId], references: [id])
-  barber         Barber            @relation(fields: [barberId], references: [id])
-  payment        Payment?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  id               String            @id @default(cuid())
+  userId           String
+  barberId         String
+  startAt          DateTime
+  endAt            DateTime
+  status           ReservationStatus @default(PENDING_PAYMENT)
+  priceCents       Int               @default(1500000)
+  notes            String?
+  createdByAdmin   Boolean           @default(false)
+  user             User              @relation(fields: [userId], references: [id])
+  barber           Barber            @relation(fields: [barberId], references: [id])
+  payment          Payment?
+  review           Review?
+  reviewInvitation ReviewInvitation?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
   @@index([barberId, startAt])
   @@index([userId, startAt])
@@ -179,9 +205,35 @@ model GalleryImage {
 }
 
 model Review {
-  id        String   @id @default(cuid())
-  name      String
-  rating    Int
-  comment   String
-  createdAt DateTime @default(now())
+  id            String       @id @default(cuid())
+  reservationId String?      @unique
+  userId        String?
+  barberId      String?
+  name          String
+  rating        Int
+  comment       String
+  submittedAt   DateTime     @default(now())
+  createdAt     DateTime     @default(now())
+  reservation   Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  user          User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  barber        Barber?      @relation(fields: [barberId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([barberId])
+  @@index([createdAt])
+}
+
+model ReviewInvitation {
+  id            String      @id @default(cuid())
+  reservationId String      @unique
+  tokenHash     String      @unique
+  sentAt        DateTime?
+  usedAt        DateTime?
+  expiresAt     DateTime?
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([tokenHash])
+  @@index([sentAt])
 }

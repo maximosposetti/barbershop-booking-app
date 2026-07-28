@@ -1,12 +1,30 @@
 "use client";
 
-import { BarChart3, CalendarClock, Camera, DollarSign, Home, Images, LogOut, MapPin, Pencil, Save, Scissors, Trash2, Upload, UserRound } from "lucide-react";
+import {
+  BarChart3,
+  CalendarClock,
+  Camera,
+  DollarSign,
+  Home,
+  LogOut,
+  MessageSquare,
+  Pencil,
+  Save,
+  Scissors,
+  Search,
+  Star,
+  ArrowDown,
+  ArrowUp,
+  Trash2,
+  Upload,
+  UserRound
+} from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { AdminInsights } from "@/components/AdminInsights";
 
-type AdminSection = "charts" | "barbers" | "schedule" | "photos" | "settings";
+type AdminSection = "charts" | "users" | "reviews" | "barbers" | "schedule" | "photos" | "settings";
 
 type Barber = {
   id: string;
@@ -29,6 +47,25 @@ type User = {
   id: string;
   name: string | null;
   email: string;
+  image: string | null;
+  phone: string | null;
+  city: string | null;
+  addressStreet: string | null;
+  addressNumber: string | null;
+  addressFloor: string | null;
+  addressApartment: string | null;
+  createdAt: string;
+};
+
+type Review = {
+  id: string;
+  name: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  submittedAt: string;
+  barber: { name: string } | null;
+  user: { name: string | null; email: string; phone: string | null; image: string | null } | null;
 };
 
 type GalleryImage = {
@@ -58,6 +95,8 @@ const galleryCategoryOptions = [
 
 const adminSections: { id: AdminSection; label: string; icon: ReactNode }[] = [
   { id: "charts", label: "Graficos", icon: <BarChart3 size={18} /> },
+  { id: "users", label: "Buscador usuarios", icon: <Search size={18} /> },
+  { id: "reviews", label: "Reseñas", icon: <MessageSquare size={18} /> },
   { id: "barbers", label: "Barberos", icon: <Scissors size={18} /> },
   { id: "schedule", label: "Horarios", icon: <CalendarClock size={18} /> },
   { id: "photos", label: "Fotos", icon: <Camera size={18} /> },
@@ -65,6 +104,53 @@ const adminSections: { id: AdminSection; label: string; icon: ReactNode }[] = [
 ];
 
 const priceFormatter = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
+
+type UserSearchField = "all" | "name" | "email" | "phone" | "city" | "address" | "createdAt";
+type ReviewSearchField = "all" | "keyword" | "user" | "email" | "phone" | "barber";
+
+function formatAddress(user: User) {
+  const street = [user.addressStreet, user.addressNumber].filter(Boolean).join(" ");
+  const unit = [user.addressFloor ? `Piso ${user.addressFloor}` : "", user.addressApartment ? `Depto ${user.addressApartment}` : ""]
+    .filter(Boolean)
+    .join(", ");
+
+  return [street, unit].filter(Boolean).join(" - ") || "-";
+}
+
+function getUserSearchValue(user: User, field: UserSearchField) {
+  const values = {
+    name: user.name ?? "",
+    email: user.email,
+    phone: user.phone ?? "",
+    city: user.city ?? "",
+    address: formatAddress(user),
+    createdAt: formatUserRegistrationDate(user.createdAt)
+  };
+
+  return field === "all" ? Object.values(values).join(" ") : values[field];
+}
+
+function getUserSortValue(user: User, field: UserSearchField) {
+  if (field === "all" || field === "createdAt") return user.createdAt;
+  return getUserSearchValue(user, field);
+}
+
+function formatUserRegistrationDate(value: string) {
+  return new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+}
+
+function getReviewSearchValue(review: Review, field: ReviewSearchField) {
+  const userName = review.user?.name ?? review.name;
+  const values = {
+    keyword: review.comment,
+    user: userName,
+    email: review.user?.email ?? "",
+    phone: review.user?.phone ?? "",
+    barber: review.barber?.name ?? ""
+  };
+
+  return field === "all" ? Object.values(values).join(" ") : values[field];
+}
 
 function getMinimumReservationDateTime() {
   const date = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -106,6 +192,7 @@ export function AdminPanel({
   initialUsers,
   initialGallery,
   initialSettings,
+  initialReviews,
   databaseReady
 }: {
   initialBarbers: Barber[];
@@ -113,6 +200,7 @@ export function AdminPanel({
   initialUsers: User[];
   initialGallery: GalleryImage[];
   initialSettings: BusinessSettings;
+  initialReviews: Review[];
   databaseReady: boolean;
 }) {
   const [activeSection, setActiveSection] = useState<AdminSection>("charts");
@@ -120,13 +208,39 @@ export function AdminPanel({
   const [reservations, setReservations] = useState(initialReservations);
   const [gallery, setGallery] = useState(initialGallery);
   const [settings, setSettings] = useState(initialSettings);
+  const [reviews, setReviews] = useState(initialReviews);
   const [editingBarber, setEditingBarber] = useState<Barber | null>(null);
   const [editingPhoto, setEditingPhoto] = useState<GalleryImage | null>(null);
   const [reservationDraftStatuses, setReservationDraftStatuses] = useState<Record<string, string>>({});
+  const [userSearch, setUserSearch] = useState("");
+  const [userSearchField, setUserSearchField] = useState<UserSearchField>("all");
+  const [userSortDirection, setUserSortDirection] = useState<"asc" | "desc">("desc");
+  const [reviewSearch, setReviewSearch] = useState("");
+  const [reviewSearchField, setReviewSearchField] = useState<ReviewSearchField>("all");
   const [message, setMessage] = useState("");
 
   const activeBarbers = barbers.filter((barber) => barber.active);
   const inactiveBarbers = barbers.filter((barber) => !barber.active);
+  const filteredUsers = useMemo(() => {
+    const normalizedSearch = userSearch.trim().toLowerCase();
+    const results = initialUsers.filter((user) => {
+      if (!normalizedSearch) return true;
+      return getUserSearchValue(user, userSearchField).toLowerCase().includes(normalizedSearch);
+    });
+
+    return [...results].sort((userA, userB) => {
+      const valueA = getUserSortValue(userA, userSearchField).toLowerCase();
+      const valueB = getUserSortValue(userB, userSearchField).toLowerCase();
+      const direction = userSortDirection === "asc" ? 1 : -1;
+      return valueA.localeCompare(valueB) * direction;
+    });
+  }, [initialUsers, userSearch, userSearchField, userSortDirection]);
+  const filteredReviews = useMemo(() => {
+    const normalizedSearch = reviewSearch.trim().toLowerCase();
+    if (!normalizedSearch) return reviews;
+
+    return reviews.filter((review) => getReviewSearchValue(review, reviewSearchField).toLowerCase().includes(normalizedSearch));
+  }, [reviewSearch, reviewSearchField, reviews]);
 
   async function createBarber(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -206,7 +320,7 @@ export function AdminPanel({
   }
 
   async function deleteInactiveBarber(barber: Barber) {
-    const confirmed = window.confirm("¿esta seguro que desea eliminar este barbero?");
+    const confirmed = window.confirm("Estas seguro que deseas eliminar este barbero? SI/NO");
     if (!confirmed) return;
 
     const response = await fetch(`/api/admin/barbers/${barber.id}`, { method: "DELETE" });
@@ -304,7 +418,7 @@ export function AdminPanel({
   }
 
   async function deletePhoto(photo: GalleryImage) {
-    const confirmed = window.confirm("¿esta seguro que desea eliminar esta foto?");
+    const confirmed = window.confirm("Estas seguro que deseas eliminar esta foto? SI/NO");
     if (!confirmed) return;
     const response = await fetch(`/api/admin/gallery/${photo.id}`, { method: "DELETE" });
 
@@ -314,6 +428,21 @@ export function AdminPanel({
       setMessage("Foto eliminada.");
     } else {
       setMessage("No se pudo eliminar la foto.");
+    }
+  }
+
+  async function deleteReview(review: Review) {
+    const confirmed = window.confirm("Estas seguro que deseas eliminar esta reseña? SI/NO");
+    if (!confirmed) return;
+
+    const response = await fetch(`/api/admin/reviews/${review.id}`, { method: "DELETE" });
+
+    if (response.ok) {
+      setReviews((current) => current.filter((currentReview) => currentReview.id !== review.id));
+      setMessage("Reseña eliminada.");
+    } else {
+      const body = await response.json().catch(() => ({}));
+      setMessage(getApiErrorMessage(body, "No se pudo eliminar la reseña."));
     }
   }
 
@@ -408,15 +537,6 @@ export function AdminPanel({
           <Link href="/">
             <Home size={18} /> Inicio
           </Link>
-          <Link href="/#barberos">
-            <Scissors size={18} /> Barberos landing
-          </Link>
-          <Link href="/#galeria">
-            <Images size={18} /> Galería
-          </Link>
-          <Link href="/#ubicacion">
-            <MapPin size={18} /> Ubicación
-          </Link>
           <Link href="/perfil">
             <UserRound size={18} /> Mi perfil
           </Link>
@@ -459,6 +579,139 @@ export function AdminPanel({
         {message ? <div className="alert success">{message}</div> : null}
 
         {activeSection === "charts" && (databaseReady ? <AdminInsights /> : <div className="card"><div className="card-body">Los graficos necesitan la base de datos conectada.</div></div>)}
+
+        {activeSection === "users" ? (
+          <div className="admin-section-stack">
+            <section className="card">
+              <div className="card-body">
+                <h2>Buscador usuarios</h2>
+                <div className="user-search-controls">
+                  <input
+                    className="input"
+                    value={userSearch}
+                    onChange={(event) => setUserSearch(event.target.value)}
+                    placeholder="Buscar usuario"
+                  />
+                  <select className="input" value={userSearchField} onChange={(event) => setUserSearchField(event.target.value as UserSearchField)}>
+                    <option value="all">Todos los campos</option>
+                    <option value="name">Nombre</option>
+                    <option value="email">Email</option>
+                    <option value="phone">Telefono</option>
+                    <option value="city">Ciudad</option>
+                    <option value="address">Domicilio</option>
+                    <option value="createdAt">Fecha de registro</option>
+                  </select>
+                  <button
+                    aria-label={userSortDirection === "asc" ? "Orden ascendente" : "Orden descendente"}
+                    className="button secondary sort-direction-button"
+                    onClick={() => setUserSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
+                    type="button"
+                  >
+                    {userSortDirection === "asc" ? <ArrowUp size={18} /> : <ArrowDown size={18} />}
+                    {userSortDirection === "asc" ? "Ascendente" : "Descendente"}
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <section className="card">
+              <div className="card-body">
+                <h2>Lista de usuarios</h2>
+                <div className="users-table">
+                  <div className="users-table-head users-table-grid">
+                    <span aria-hidden="true" />
+                    <span>Nombre</span>
+                    <span>Email</span>
+                    <span>Telefono</span>
+                    <span>Ciudad</span>
+                    <span>Domicilio</span>
+                    <span>Fecha de registro</span>
+                  </div>
+                  {filteredUsers.map((user) => (
+                    <div className="users-row users-table-grid" key={user.id}>
+                      <span className="users-avatar-cell" data-label="Foto">
+                        <img src={user.image || "/default-pfp.jpg"} alt={user.name ? `Foto de ${user.name}` : "Foto de perfil"} />
+                      </span>
+                      <span data-label="Nombre">{user.name ?? "-"}</span>
+                      <span data-label="Email">{user.email}</span>
+                      <span data-label="Telefono">{user.phone ?? "-"}</span>
+                      <span data-label="Ciudad">{user.city ?? "-"}</span>
+                      <span data-label="Domicilio">{formatAddress(user)}</span>
+                      <span data-label="Fecha de registro">{formatUserRegistrationDate(user.createdAt)}</span>
+                    </div>
+                  ))}
+                </div>
+                {!filteredUsers.length ? <p>No se encontraron usuarios con esos filtros.</p> : null}
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        {activeSection === "reviews" ? (
+          <div className="admin-section-stack">
+            <section className="card">
+              <div className="card-body">
+                <h2>Buscador de reseñas</h2>
+                <div className="user-search-controls">
+                  <input
+                    className="input"
+                    value={reviewSearch}
+                    onChange={(event) => setReviewSearch(event.target.value)}
+                    placeholder="Buscar reseña"
+                  />
+                  <select className="input" value={reviewSearchField} onChange={(event) => setReviewSearchField(event.target.value as ReviewSearchField)}>
+                    <option value="all">Todos los campos</option>
+                    <option value="keyword">Palabras clave</option>
+                    <option value="user">Usuario</option>
+                    <option value="email">Email</option>
+                    <option value="phone">Telefono</option>
+                    <option value="barber">Barbero</option>
+                  </select>
+                </div>
+              </div>
+            </section>
+
+            <section className="card">
+              <div className="card-body">
+                <h2>Reseñas recibidas</h2>
+                <div className="reviews-admin-list">
+                  {filteredReviews.map((review) => {
+                    const authorName = review.user?.name ?? review.name;
+                    const authorImage = review.user?.image || "/default-pfp.jpg";
+                    return (
+                      <article className="review-admin-item" key={review.id}>
+                        <div className="review-admin-author">
+                          <img src={authorImage} alt={authorName} />
+                          <div>
+                            <strong>{authorName}</strong>
+                            <span>{review.user?.email ?? "Reseña demo"}</span>
+                            <span>{review.user?.phone ?? "-"}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="stars">
+                            {Array.from({ length: 5 }).map((_, index) => (
+                              <Star key={index} size={17} fill={index < review.rating ? "currentColor" : "none"} />
+                            ))}
+                          </div>
+                          <p>{review.comment}</p>
+                          <span>
+                            {review.barber?.name ?? "Barberia"} -{" "}
+                            {new Intl.DateTimeFormat("es-AR", { dateStyle: "short" }).format(new Date(review.submittedAt ?? review.createdAt))}
+                          </span>
+                        </div>
+                        <button className="button danger" type="button" onClick={() => deleteReview(review)}>
+                          <Trash2 size={18} />
+                        </button>
+                      </article>
+                    );
+                  })}
+                  {!filteredReviews.length ? <p>No se encontraron reseñas con esos filtros.</p> : null}
+                </div>
+              </div>
+            </section>
+          </div>
+        ) : null}
 
         {activeSection === "barbers" ? (
           <div className="admin-section-stack">
@@ -796,3 +1049,4 @@ export function AdminPanel({
     </div>
   );
 }
+

@@ -1,8 +1,10 @@
 import type { Barber, GalleryImage, Review } from "@prisma/client";
 import { MapPin, Star } from "lucide-react";
 import Link from "next/link";
+import { StyleAssistant } from "@/components/StyleAssistant";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getReviewAverages } from "@/server/reviews/service";
 
 const fallbackShopPhotos = [
   "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1200&q=85",
@@ -21,6 +23,11 @@ const fallbackReviews = [
   { name: "Lucas P.", rating: 5, comment: "Muy facil reservar. Pague online y me llego la confirmacion al toque." },
   { name: "Santiago G.", rating: 4, comment: "Buen ambiente, buenos productos y barberos con mucha tecnica." }
 ];
+
+type LandingReview = Review & {
+  user: { name: string | null; email: string; image: string | null } | null;
+  barber: { name: string } | null;
+};
 
 const fallbackBarbers = [
   {
@@ -42,29 +49,55 @@ export const dynamic = "force-dynamic";
 async function getLandingData(): Promise<{
   barbers: Barber[];
   gallery: GalleryImage[];
-  reviews: Review[];
+  reviews: LandingReview[];
+  reviewAverages: Awaited<ReturnType<typeof getReviewAverages>>;
 }> {
   try {
-    const [barbers, gallery, reviews] = await Promise.all([
+    const [barbers, gallery, reviews, reviewAverages] = await Promise.all([
       prisma.barber.findMany({ where: { active: true }, take: 2, orderBy: { createdAt: "asc" } }),
       prisma.galleryImage.findMany({ take: 8, orderBy: { createdAt: "desc" } }),
-      prisma.review.findMany({ take: 3, orderBy: { createdAt: "desc" } })
+      prisma.review.findMany({
+        take: 6,
+        orderBy: { createdAt: "desc" },
+        include: {
+          user: { select: { name: true, email: true, image: true } },
+          barber: { select: { name: true } }
+        }
+      }),
+      getReviewAverages()
     ]);
 
-    return { barbers, gallery, reviews };
+    return { barbers, gallery, reviews, reviewAverages };
   } catch {
     console.warn("No se pudo leer la base de datos para la landing. Se muestran datos demo.");
-    return { barbers: [], gallery: [], reviews: [] };
+    return { barbers: [], gallery: [], reviews: [], reviewAverages: { general: { average: 0, count: 0 }, byBarber: new Map() } };
   }
 }
 
 export default async function HomePage() {
   const session = await getCurrentSession().catch(() => null);
-  const { barbers, gallery, reviews } = await getLandingData();
+  const { barbers, gallery, reviews, reviewAverages } = await getLandingData();
   const bookingHref = session?.user ? "/agendar" : "/auth/login?callbackUrl=/agendar";
   const shopPhotos = gallery.filter((image) => image.category === "SHOP").map((image) => image.url);
   const haircutPhotos = gallery.filter((image) => image.category === "HAIRCUT").map((image) => image.url);
   const mapUrl = process.env.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_URL;
+  const visibleReviews = reviews.length
+    ? reviews.map((review) => ({
+        id: review.id,
+        name: review.user?.name ?? review.name,
+        image: review.user?.image ?? "/default-pfp.jpg",
+        barberName: review.barber?.name ?? null,
+        rating: review.rating,
+        comment: review.comment
+      }))
+    : fallbackReviews.map((review, index) => ({
+        id: `fallback-${index}`,
+        name: review.name,
+        image: "/default-pfp.jpg",
+        barberName: null,
+        rating: review.rating,
+        comment: review.comment
+      }));
 
   return (
     <main>
@@ -125,6 +158,14 @@ export default async function HomePage() {
                 <div className="card-body">
                   <h3>{barber.name}</h3>
                   <p>{barber.description}</p>
+                  {"slug" in barber ? (
+                    <div className="barber-rating">
+                      <Star size={17} fill="currentColor" />
+                      {reviewAverages.byBarber.get(barber.id)?.count
+                        ? `${reviewAverages.byBarber.get(barber.id)?.average.toFixed(1)} (${reviewAverages.byBarber.get(barber.id)?.count} reseñas)`
+                        : "Sin reseñas todavia"}
+                    </div>
+                  ) : null}
                 </div>
               </article>
             ))}
@@ -137,10 +178,16 @@ export default async function HomePage() {
           <div className="section-title">
             <h2>Clientes</h2>
             <p>Reservas simples, atencion puntual y resultados consistentes.</p>
+            <div className="reviews-summary">
+              <Star size={18} fill="currentColor" />
+              {reviewAverages.general.count
+                ? `${reviewAverages.general.average.toFixed(1)} promedio general de la barberia sobre ${reviewAverages.general.count} reseñas`
+                : "Promedio general pendiente de reseñas reales"}
+            </div>
           </div>
           <div className="grid-3">
-            {(reviews.length ? reviews : fallbackReviews).map((review) => (
-              <article className="card" key={review.name}>
+            {visibleReviews.map((review) => (
+              <article className="card" key={review.id}>
                 <div className="card-body">
                   <div className="stars">
                     {Array.from({ length: review.rating }).map((_, index) => (
@@ -148,7 +195,13 @@ export default async function HomePage() {
                     ))}
                   </div>
                   <p>{review.comment}</p>
-                  <strong>{review.name}</strong>
+                  <div className="review-author">
+                    <img src={review.image} alt={review.name} />
+                    <div>
+                      <strong>{review.name}</strong>
+                      {review.barberName ? <span>Con {review.barberName}</span> : null}
+                    </div>
+                  </div>
                 </div>
               </article>
             ))}
@@ -167,6 +220,7 @@ export default async function HomePage() {
           <iframe className="map" loading="lazy" src={mapUrl} title="Ubicacion de la barberia" />
         </div>
       </section>
+      {session?.user ? <StyleAssistant /> : null}
     </main>
   );
 }

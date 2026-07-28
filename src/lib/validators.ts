@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { argentinaCityValues } from "@/lib/argentina-cities";
 
 const halfHourTimeSchema = z
   .string()
@@ -8,21 +9,99 @@ const halfHourTimeSchema = z
     return hours >= 0 && hours <= 23;
   }, "Usa una hora valida");
 
+function normalizeNationalMobilePhone(value: string) {
+  const digits = value.replace(/^0+/, "");
+
+  if (/^15\d{8}$/.test(digits)) {
+    return `11${digits.slice(2)}`;
+  }
+
+  for (const areaLength of [2, 3, 4]) {
+    const subscriberLength = 10 - areaLength;
+    const expectedLength = areaLength + 2 + subscriberLength;
+
+    if (digits.length === expectedLength && digits.slice(areaLength, areaLength + 2) === "15") {
+      return `${digits.slice(0, areaLength)}${digits.slice(areaLength + 2)}`;
+    }
+  }
+
+  if (/^[1-9]\d{9}$/.test(digits)) {
+    return digits;
+  }
+
+  return null;
+}
+
+function normalizeArgentinaWhatsappPhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return null;
+
+  let nationalNumber: string | null = null;
+
+  if (digits.startsWith("549")) {
+    nationalNumber = normalizeNationalMobilePhone(digits.slice(3));
+  } else if (digits.startsWith("54")) {
+    const withoutCountryCode = digits.slice(2);
+    nationalNumber = normalizeNationalMobilePhone(
+      withoutCountryCode.startsWith("9") ? withoutCountryCode.slice(1) : withoutCountryCode
+    );
+  } else {
+    nationalNumber = normalizeNationalMobilePhone(digits);
+  }
+
+  return nationalNumber ? `+549${nationalNumber}` : null;
+}
+
+const argentinaPhoneSchema = z
+  .string()
+  .trim()
+  .min(8, "Ingresa un telefono")
+  .max(32, "El telefono es demasiado largo")
+  .transform((value, context) => {
+    const normalized = normalizeArgentinaWhatsappPhone(value);
+
+    if (!normalized) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Ingresa un telefono celular valido de Argentina"
+      });
+      return z.NEVER;
+    }
+
+    return normalized;
+  });
+
+const realisticEmailSchema = z
+  .string()
+  .email("Ingresa un correo valido")
+  .max(120)
+  .refine((value) => /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(value), "Ingresa un correo con dominio valido");
+
+const citySchema = z.string().refine((value) => argentinaCityValues.includes(value), "Selecciona una ciudad de la lista");
+
+const userLocationShape = {
+  phone: argentinaPhoneSchema,
+  city: citySchema,
+  addressStreet: z.string().min(2, "Ingresa la calle").max(90),
+  addressNumber: z.string().min(1, "Ingresa el numero").max(12).regex(/^\d+[a-zA-Z]?$/, "Ingresa un numero de calle valido"),
+  addressFloor: z.string().max(12).optional().or(z.literal("")),
+  addressApartment: z.string().max(12).optional().or(z.literal(""))
+};
+
 export const registerSchema = z.object({
   name: z.string().min(2, "Ingresa tu nombre"),
-  email: z.string().email("Ingresá un correo válido"),
-  phone: z.string().max(40).optional(),
+  email: realisticEmailSchema,
+  ...userLocationShape,
   password: z.string().min(8, "La contrasena debe tener al menos 8 caracteres")
 });
 
 export const profileSchema = z.object({
   name: z.string().min(2, "Ingresa tu nombre").max(80),
-  phone: z.string().max(40).optional().nullable(),
-  image: z.string().url("Ingresa una URL valida").optional().or(z.literal(""))
+  ...userLocationShape
 });
 
 export const passwordResetRequestSchema = z.object({
-  email: z.string().email().optional()
+  email: realisticEmailSchema.optional()
 });
 
 export const passwordResetConfirmSchema = z.object({
@@ -68,4 +147,9 @@ export const adminReservationSchema = reservationSchema.extend({
 
 export const businessSettingsSchema = z.object({
   haircutPriceCents: z.number().int().min(100, "El precio debe ser mayor a 0").max(100000000, "El precio es demasiado alto")
+});
+
+export const reviewSubmissionSchema = z.object({
+  rating: z.number().int().min(1, "Selecciona al menos 1 estrella").max(5, "La puntuacion maxima es 5 estrellas"),
+  comment: z.string().trim().min(10, "Contanos un poco mas sobre tu experiencia").max(1000, "La reseña es demasiado larga")
 });

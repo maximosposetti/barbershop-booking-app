@@ -2,6 +2,9 @@ import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { registerSchema } from "@/lib/validators";
+import { createAndSendPhoneVerificationCode } from "@/server/phone/verification";
+
+const phoneVerificationEnabled = process.env.ENABLE_PHONE_VERIFICATION === "true";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -23,11 +26,43 @@ export async function POST(request: Request) {
     data: {
       name: parsed.data.name,
       email,
-      phone: parsed.data.phone || null,
+      phone: parsed.data.phone,
+      phoneVerifiedAt: phoneVerificationEnabled ? null : new Date(),
+      city: parsed.data.city,
+      addressStreet: parsed.data.addressStreet,
+      addressNumber: parsed.data.addressNumber,
+      addressFloor: parsed.data.addressFloor || null,
+      addressApartment: parsed.data.addressApartment || null,
       passwordHash
     },
-    select: { id: true, name: true, email: true }
+    select: { id: true, name: true, email: true, phone: true }
   });
 
-  return NextResponse.json({ user }, { status: 201 });
+  if (!phoneVerificationEnabled) {
+    return NextResponse.json({ user, phoneVerification: null }, { status: 201 });
+  }
+
+  try {
+    const verification = await createAndSendPhoneVerificationCode({
+      userId: user.id,
+      phone: user.phone ?? parsed.data.phone
+    });
+
+    return NextResponse.json(
+      {
+        user,
+        phoneVerification: {
+          expiresAt: verification.expiresAt,
+          devCode: process.env.NODE_ENV === "production" ? undefined : verification.devCode
+        }
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    await prisma.user.delete({ where: { id: user.id } }).catch(() => undefined);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "No se pudo enviar el codigo de WhatsApp." },
+      { status: 502 }
+    );
+  }
 }

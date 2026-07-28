@@ -16,7 +16,7 @@ export default async function AdminPage() {
     redirect("/");
   }
 
-  const { barbers, reservations, users, gallery, settings, databaseReady } = await Promise.all([
+  const { barbers, reservations, users, gallery, settings, reviews, databaseReady } = await Promise.all([
     prisma.barber.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.reservation.findMany({
       orderBy: { startAt: "asc" },
@@ -25,19 +25,56 @@ export default async function AdminPage() {
         user: { select: { name: true, email: true } }
       }
     }),
-    prisma.user.findMany({ orderBy: { createdAt: "desc" }, select: { id: true, name: true, email: true } }),
+    prisma.user.findMany({
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        image: true,
+        phone: true,
+        city: true,
+        addressStreet: true,
+        addressNumber: true,
+        addressFloor: true,
+        addressApartment: true,
+        createdAt: true
+      }
+    }),
     prisma.galleryImage.findMany({ orderBy: { createdAt: "desc" } }),
-    getBusinessSettings()
+    getBusinessSettings(),
+    prisma.review.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        barber: { select: { name: true } },
+        user: { select: { name: true, email: true, phone: true, image: true } }
+      }
+    })
   ])
-    .then(([barbers, reservations, users, gallery, settings]) => ({ barbers, reservations, users, gallery, settings, databaseReady: true }))
+    .then(([barbers, reservations, users, gallery, settings, reviews]) => ({ barbers, reservations, users, gallery, settings, reviews, databaseReady: true }))
     .catch(() => {
       console.warn("No se pudo leer datos de admin desde la base. Se muestra modo demo.");
       return {
         barbers: demoBarbers,
         reservations: [],
-        users: [{ id: demoAdminUser.id, name: demoAdminUser.name, email: demoAdminUser.email }],
+        users: [
+          {
+            id: demoAdminUser.id,
+            name: demoAdminUser.name,
+            email: demoAdminUser.email,
+            image: null,
+            phone: null,
+            city: null,
+            addressStreet: null,
+            addressNumber: null,
+            addressFloor: null,
+            addressApartment: null,
+            createdAt: new Date()
+          }
+        ],
         gallery: [],
         settings: { haircutPriceCents: DEFAULT_HAIRCUT_PRICE_CENTS },
+        reviews: [],
         databaseReady: false
       };
     });
@@ -50,7 +87,10 @@ export default async function AdminPage() {
           ...reservation,
           startAt: reservation.startAt instanceof Date ? reservation.startAt.toISOString() : reservation.startAt
         }))}
-        initialUsers={users}
+        initialUsers={users.map((user) => ({
+          ...user,
+          createdAt: user.createdAt instanceof Date ? user.createdAt.toISOString() : user.createdAt
+        }))}
         initialGallery={gallery.map((image) => ({
           id: image.id,
           title: image.title,
@@ -58,6 +98,11 @@ export default async function AdminPage() {
           category: image.category
         }))}
         initialSettings={{ haircutPriceCents: settings.haircutPriceCents }}
+        initialReviews={reviews.map((review) => ({
+          ...review,
+          createdAt: review.createdAt instanceof Date ? review.createdAt.toISOString() : review.createdAt,
+          submittedAt: review.submittedAt instanceof Date ? review.submittedAt.toISOString() : review.submittedAt
+        }))}
         databaseReady={databaseReady}
       />
     </main>

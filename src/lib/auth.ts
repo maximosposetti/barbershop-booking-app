@@ -54,7 +54,7 @@ const providers: AuthOptions["providers"] = [
         id: user.id,
         email: user.email,
         name: user.name,
-        image: user.image,
+        image: user.image?.startsWith("data:") ? null : user.image,
         role: user.role
       };
     }
@@ -97,6 +97,7 @@ export const authOptions: AuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.picture = user.image && !String(user.image).startsWith("data:") ? user.image : null;
       }
 
       if (token.email && !token.role) {

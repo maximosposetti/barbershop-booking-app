@@ -7,8 +7,17 @@
     "src/app/api/admin/ai-chat/route.ts": {
       "maxDuration": 30
     },
+    "src/app/api/cron/review-invitations/route.ts": {
+      "maxDuration": 30
+    },
     "src/app/api/payments/webhook/route.ts": {
       "maxDuration": 30
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/review-invitations",
+      "schedule": "0 9 * * *"
+    }
+  ]
 }

@@ -6,6 +6,19 @@ type ReservationEmail = {
   user: { email: string; name: string | null };
 };
 
+type ReviewInvitationEmail = ReservationEmail & {
+  reviewUrl: string;
+};
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function createMailTransporter() {
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
     return null;
@@ -74,4 +87,37 @@ export async function sendPasswordResetEmail(input: { email: string; name: strin
       </div>
     `
   });
+}
+
+export async function sendReviewInvitationEmail(input: ReviewInvitationEmail) {
+  const transporter = createMailTransporter();
+
+  if (!transporter) {
+    console.warn("SMTP no configurado. Se omite correo de reseña.");
+    return false;
+  }
+
+  const date = new Intl.DateTimeFormat("es-AR", {
+    dateStyle: "full",
+    timeStyle: "short",
+    timeZone: "America/Argentina/Buenos_Aires"
+  }).format(input.startAt);
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM,
+    to: input.user.email,
+    subject: "Contanos como fue tu experiencia en Barber Studio",
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.5;color:#181818">
+        <h1>Como estuvo tu corte?</h1>
+        <p>Hola ${escapeHtml(input.user.name ?? "")}, gracias por venir a Barber Studio.</p>
+        <p>Tu turno con <strong>${escapeHtml(input.barber.name)}</strong> del <strong>${escapeHtml(date)}</strong> ya finalizo.</p>
+        <p>Nos ayudas dejando una reseña con estrellas y un comentario sobre tu experiencia?</p>
+        <p><a href="${escapeHtml(input.reviewUrl)}" style="display:inline-block;background:#111;color:#fff;padding:12px 16px;border-radius:8px;text-decoration:none">Dejar reseña</a></p>
+        <p>El enlace es unico y solo puede usarse una vez.</p>
+      </div>
+    `
+  });
+
+  return true;
 }
